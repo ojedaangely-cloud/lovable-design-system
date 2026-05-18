@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedVentasRouteImport } from './routes/_authenticated/ventas'
+import { Route as AuthenticatedInventarioRouteImport } from './routes/_authenticated/inventario'
 import { Route as AuthenticatedGastosRouteImport } from './routes/_authenticated/gastos'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 
@@ -35,6 +36,11 @@ const AuthenticatedVentasRoute = AuthenticatedVentasRouteImport.update({
   path: '/ventas',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedInventarioRoute = AuthenticatedInventarioRouteImport.update({
+  id: '/inventario',
+  path: '/inventario',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedGastosRoute = AuthenticatedGastosRouteImport.update({
   id: '/gastos',
   path: '/gastos',
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/gastos': typeof AuthenticatedGastosRoute
+  '/inventario': typeof AuthenticatedInventarioRoute
   '/ventas': typeof AuthenticatedVentasRoute
 }
 export interface FileRoutesByTo {
@@ -58,6 +65,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/gastos': typeof AuthenticatedGastosRoute
+  '/inventario': typeof AuthenticatedInventarioRoute
   '/ventas': typeof AuthenticatedVentasRoute
 }
 export interface FileRoutesById {
@@ -67,13 +75,20 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/gastos': typeof AuthenticatedGastosRoute
+  '/_authenticated/inventario': typeof AuthenticatedInventarioRoute
   '/_authenticated/ventas': typeof AuthenticatedVentasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/dashboard' | '/gastos' | '/ventas'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/dashboard'
+    | '/gastos'
+    | '/inventario'
+    | '/ventas'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/dashboard' | '/gastos' | '/ventas'
+  to: '/' | '/login' | '/dashboard' | '/gastos' | '/inventario' | '/ventas'
   id:
     | '__root__'
     | '/'
@@ -81,6 +96,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/dashboard'
     | '/_authenticated/gastos'
+    | '/_authenticated/inventario'
     | '/_authenticated/ventas'
   fileRoutesById: FileRoutesById
 }
@@ -120,6 +136,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVentasRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/inventario': {
+      id: '/_authenticated/inventario'
+      path: '/inventario'
+      fullPath: '/inventario'
+      preLoaderRoute: typeof AuthenticatedInventarioRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/gastos': {
       id: '/_authenticated/gastos'
       path: '/gastos'
@@ -140,12 +163,14 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedGastosRoute: typeof AuthenticatedGastosRoute
+  AuthenticatedInventarioRoute: typeof AuthenticatedInventarioRoute
   AuthenticatedVentasRoute: typeof AuthenticatedVentasRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedGastosRoute: AuthenticatedGastosRoute,
+  AuthenticatedInventarioRoute: AuthenticatedInventarioRoute,
   AuthenticatedVentasRoute: AuthenticatedVentasRoute,
 }
 
