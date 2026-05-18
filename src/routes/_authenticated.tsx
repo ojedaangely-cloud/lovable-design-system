@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthLayout() {
-  const { session, loading } = useAuth();
+  const { session, loading, signOut } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
