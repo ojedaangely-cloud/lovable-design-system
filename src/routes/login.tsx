@@ -89,52 +89,30 @@ function LoginPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button variant="outline" className="w-full" onClick={signInGoogle} type="button">
-            Continuar con Google
-          </Button>
-          <div className="relative text-center text-xs text-muted-foreground">
-            <span className="bg-card px-2 relative z-10">o con email</span>
-            <div className="absolute inset-x-0 top-1/2 h-px bg-border" />
-          </div>
           <form onSubmit={submit} className="space-y-3">
             {mode === "signup" && (
-              <>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label htmlFor="firstName">Nombre</Label>
-                    <Input
-                      id="firstName"
-                      type="text"
-                      required
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="lastName">Apellido</Label>
-                    <Input
-                      id="lastName"
-                      type="text"
-                      required
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                    />
-                  </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="firstName">Nombre</Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    required
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="roleSelect">Rol / Cargo Administrativo</Label>
-                  <select
-                    id="roleSelect"
-                    value={role}
-                    className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                    onChange={(e) => setRole(e.target.value)}
-                  >
-                    <option value="employee">Empleado (Solo ver)</option>
-                    <option value="manager">Gerente (Ver todo, editar/eliminar propios)</option>
-                    <option value="admin">Administrador (Control total)</option>
-                  </select>
+                  <Label htmlFor="lastName">Apellido</Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    required
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                  />
                 </div>
-              </>
+              </div>
             )}
             <div className="space-y-1">
               <Label htmlFor="email">Email</Label>
