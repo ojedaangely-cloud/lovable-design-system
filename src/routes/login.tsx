@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
+import logo from "@/assets/logo-borrego.jpg";
+
 export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
@@ -18,6 +20,9 @@ function LoginPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [role, setRole] = useState("employee");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -35,7 +40,15 @@ function LoginPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+          options: {
+            emailRedirectTo: `${window.location.origin}/dashboard`,
+            data: {
+              first_name: firstName,
+              last_name: lastName,
+              full_name: `${firstName} ${lastName}`.trim(),
+              role: role,
+            },
+          },
         });
         if (error) throw error;
         toast.success("Cuenta creada. Revisa tu email para confirmar.");
@@ -56,11 +69,24 @@ function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{mode === "signin" ? "Iniciar sesión" : "Crear cuenta"}</CardTitle>
-          <CardDescription>Restaurante Lite</CardDescription>
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 relative overflow-hidden">
+      {/* Background gradients */}
+      <div className="absolute top-0 left-0 h-80 w-80 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-black/10 blur-3xl pointer-events-none" />
+
+      <Card className="w-full max-w-md shadow-2xl border border-border/80 relative z-10">
+        <CardHeader className="text-center space-y-4 pt-8 pb-4">
+          <div className="mx-auto h-20 w-20 rounded-2xl overflow-hidden shadow-md border border-primary/20 bg-card p-0.5 transform hover:scale-105 transition-transform duration-300">
+            <img src={logo} alt="El Borrego Dorado Logo" className="h-full w-full object-cover rounded-xl" />
+          </div>
+          <div className="space-y-1.5">
+            <CardTitle className="text-2xl font-extrabold tracking-tight text-foreground">
+              {mode === "signin" ? "Iniciar Sesión" : "Crear Cuenta"}
+            </CardTitle>
+            <CardDescription className="text-[10px] font-bold text-primary uppercase tracking-widest">
+              El Borrego Dorado
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button variant="outline" className="w-full" onClick={signInGoogle} type="button">
@@ -71,6 +97,45 @@ function LoginPage() {
             <div className="absolute inset-x-0 top-1/2 h-px bg-border" />
           </div>
           <form onSubmit={submit} className="space-y-3">
+            {mode === "signup" && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="firstName">Nombre</Label>
+                    <Input
+                      id="firstName"
+                      type="text"
+                      required
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="lastName">Apellido</Label>
+                    <Input
+                      id="lastName"
+                      type="text"
+                      required
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="roleSelect">Rol / Cargo Administrativo</Label>
+                  <select
+                    id="roleSelect"
+                    value={role}
+                    className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    onChange={(e) => setRole(e.target.value)}
+                  >
+                    <option value="employee">Empleado (Solo ver)</option>
+                    <option value="manager">Gerente (Ver todo, editar/eliminar propios)</option>
+                    <option value="admin">Administrador (Control total)</option>
+                  </select>
+                </div>
+              </>
+            )}
             <div className="space-y-1">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -86,7 +151,7 @@ function LoginPage() {
           <button
             type="button"
             onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="text-sm text-muted-foreground hover:text-foreground w-full text-center"
+            className="text-sm text-muted-foreground hover:text-foreground w-full text-center cursor-pointer"
           >
             {mode === "signin" ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Entra"}
           </button>
