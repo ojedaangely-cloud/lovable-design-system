@@ -76,8 +76,8 @@ function LoginPage() {
 
       <Card className="w-full max-w-md shadow-2xl border border-border/80 relative z-10">
         <CardHeader className="text-center space-y-4 pt-8 pb-4">
-          <div className="mx-auto h-20 w-20 rounded-2xl overflow-hidden shadow-md border border-primary/20 bg-card p-0.5 transform hover:scale-105 transition-transform duration-300">
-            <img src={logo} alt="El Borrego Dorado Logo" className="h-full w-full object-cover rounded-xl" />
+          <div className="mx-auto h-20 w-auto max-w-[200px] overflow-hidden transform hover:scale-105 transition-transform duration-300">
+            <img src={logo} alt="El Borrego Dorado Logo" className="h-full w-auto object-contain" />
           </div>
           <div className="space-y-1.5">
             <CardTitle className="text-2xl font-extrabold tracking-tight text-foreground">

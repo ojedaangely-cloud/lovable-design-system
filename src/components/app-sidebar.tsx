@@ -33,8 +33,8 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-border bg-sidebar">
       {/* Brand Header */}
       <div className="flex items-center gap-3 px-5 py-6 border-b border-border/60 bg-sidebar/50 backdrop-blur-md">
-        <div className="relative flex h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/20 shadow-md">
-          <img src={logo} alt="El Borrego Dorado" className="h-full w-full object-cover scale-105" />
+        <div className="relative flex h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/20 shadow-md bg-white p-0.5">
+          <img src={logo} alt="El Borrego Dorado" className="h-full w-full object-contain" />
         </div>
         <div className="flex flex-col gap-0.5 truncate group-data-[collapsible=icon]:hidden">
           <span className="font-extrabold text-base leading-tight text-foreground tracking-tight">El Borrego Dorado</span>

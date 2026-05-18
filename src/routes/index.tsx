@@ -24,8 +24,8 @@ function Index() {
 
       <div className="max-w-xl text-center space-y-8 relative z-10 flex flex-col items-center">
         {/* Brand Logo */}
-        <div className="relative h-32 w-32 rounded-3xl overflow-hidden shadow-2xl border-2 border-primary/20 bg-card p-1 transform hover:rotate-3 transition-transform duration-300">
-          <img src={logo} alt="El Borrego Dorado Logo" className="h-full w-full object-cover rounded-2xl" />
+        <div className="relative h-32 w-auto max-w-[240px] overflow-hidden transform hover:scale-105 transition-transform duration-300">
+          <img src={logo} alt="El Borrego Dorado Logo" className="h-full w-auto object-contain" />
         </div>
 
         <div className="space-y-4">
