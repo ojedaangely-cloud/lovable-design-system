@@ -86,6 +86,33 @@ export type Database = {
         }
         Relationships: []
       }
+      employees: {
+        Row: {
+          created_at: string
+          hourly_rate: number
+          id: string
+          name: string
+          position: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hourly_rate?: number
+          id?: string
+          name: string
+          position?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hourly_rate?: number
+          id?: string
+          name?: string
+          position?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       expense_entries: {
         Row: {
           amount: number
@@ -235,6 +262,63 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      payroll_records: {
+        Row: {
+          created_at: string
+          date: string
+          employee_id: string
+          expense_entry_id: string | null
+          hourly_rate: number
+          hours_worked: number
+          id: string
+          notes: string | null
+          status: string
+          total_amount: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          employee_id: string
+          expense_entry_id?: string | null
+          hourly_rate?: number
+          hours_worked?: number
+          id?: string
+          notes?: string | null
+          status?: string
+          total_amount?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          employee_id?: string
+          expense_entry_id?: string | null
+          hourly_rate?: number
+          hours_worked?: number
+          id?: string
+          notes?: string | null
+          status?: string
+          total_amount?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_records_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_records_expense_entry_id_fkey"
+            columns: ["expense_entry_id"]
+            isOneToOne: false
+            referencedRelation: "expense_entries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
