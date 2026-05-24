@@ -18,6 +18,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { UploadReceiptDialog } from "@/components/upload-receipt-dialog";
 
 export const Route = createFileRoute("/_authenticated/ventas")({ component: Ventas });
 
@@ -258,6 +259,7 @@ function Ventas() {
               <Button onClick={add} className="w-full bg-primary hover:bg-primary/95 text-white font-bold rounded-xl shadow-md cursor-pointer pt-2">
                 <Plus className="h-4 w-4 mr-2 shrink-0" /> Registrar Venta
               </Button>
+              <UploadReceiptDialog userId={user?.id} onSaved={load} />
             </CardContent>
           </Card>
         )}
