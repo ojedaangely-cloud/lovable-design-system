@@ -15,7 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ReceiptText, Upload, Loader2, FileSpreadsheet, Save, Trash2, Plus } from "lucide-react";
+import { ReceiptText, Loader2, FileSpreadsheet, Save, Trash2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { analyzeReceipt, type ReceiptLine } from "@/lib/receipt-analyzer.functions";
 
@@ -324,6 +324,3 @@ export function UploadReceiptDialog({
     </Dialog>
   );
 }
-
-// Suppress unused icon warnings (the icon prop is used above)
-void Upload;
