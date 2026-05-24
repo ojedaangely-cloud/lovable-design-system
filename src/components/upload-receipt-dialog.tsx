@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -55,7 +54,6 @@ export function UploadReceiptDialog({
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const analyze = useServerFn(analyzeReceipt);
 
   const reset = () => {
     setPreview(null);
@@ -75,7 +73,7 @@ export function UploadReceiptDialog({
     try {
       const { base64, mimeType } = await fileToBase64(file);
       setPreview(`data:${mimeType};base64,${base64}`);
-      const result = await analyze({ data: { imageBase64: base64, mimeType } });
+      const result = await analyzeReceipt({ data: { imageBase64: base64, mimeType } });
       if (result.error) {
         toast.error(result.error);
       }
