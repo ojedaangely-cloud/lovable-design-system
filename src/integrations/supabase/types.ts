@@ -115,80 +115,6 @@ export type Database = {
         }
         Relationships: []
       }
-      employees: {
-        Row: {
-          created_at: string
-          hourly_rate: number
-          id: string
-          name: string
-          position: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          hourly_rate?: number
-          id?: string
-          name: string
-          position?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          hourly_rate?: number
-          id?: string
-          name?: string
-          position?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      expense_entries: {
-        Row: {
-          amount: number
-          categoria_id: string | null
-          category: string
-          created_at: string
-          date: string
-          description: string
-          id: string
-          invoice_url: string | null
-          paid_by: string | null
-          user_id: string
-        }
-        Insert: {
-          amount?: number
-          categoria_id?: string | null
-          category?: string
-          created_at?: string
-          date?: string
-          description?: string
-          id?: string
-          invoice_url?: string | null
-          paid_by?: string | null
-          user_id: string
-        }
-        Update: {
-          amount?: number
-          categoria_id?: string | null
-          category?: string
-          created_at?: string
-          date?: string
-          description?: string
-          id?: string
-          invoice_url?: string | null
-          paid_by?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "expense_entries_categoria_id_fkey"
-            columns: ["categoria_id"]
-            isOneToOne: false
-            referencedRelation: "categorias"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       gastos: {
         Row: {
           cantidad: number
@@ -269,42 +195,6 @@ export type Database = {
         }
         Relationships: []
       }
-      inventory_items: {
-        Row: {
-          created_at: string
-          id: string
-          min_stock: number
-          name: string
-          stock: number
-          unit: string
-          unit_cost: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          min_stock?: number
-          name: string
-          stock?: number
-          unit?: string
-          unit_cost?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          min_stock?: number
-          name?: string
-          stock?: number
-          unit?: string
-          unit_cost?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       liabilities: {
         Row: {
           amount_bs: number
@@ -340,63 +230,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      payroll_records: {
-        Row: {
-          created_at: string
-          date: string
-          employee_id: string
-          expense_entry_id: string | null
-          hourly_rate: number
-          hours_worked: number
-          id: string
-          notes: string | null
-          status: string
-          total_amount: number
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          date?: string
-          employee_id: string
-          expense_entry_id?: string | null
-          hourly_rate?: number
-          hours_worked?: number
-          id?: string
-          notes?: string | null
-          status?: string
-          total_amount?: number
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          date?: string
-          employee_id?: string
-          expense_entry_id?: string | null
-          hourly_rate?: number
-          hours_worked?: number
-          id?: string
-          notes?: string | null
-          status?: string
-          total_amount?: number
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payroll_records_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payroll_records_expense_entry_id_fkey"
-            columns: ["expense_entry_id"]
-            isOneToOne: false
-            referencedRelation: "expense_entries"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       profiles: {
         Row: {
@@ -490,36 +323,6 @@ export type Database = {
           paid?: boolean
           paid_date?: string | null
           rate?: number
-          user_id?: string
-        }
-        Relationships: []
-      }
-      sales_entries: {
-        Row: {
-          amount: number
-          created_at: string
-          date: string
-          description: string
-          id: string
-          payment_method: string
-          user_id: string
-        }
-        Insert: {
-          amount?: number
-          created_at?: string
-          date?: string
-          description?: string
-          id?: string
-          payment_method?: string
-          user_id: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          date?: string
-          description?: string
-          id?: string
-          payment_method?: string
           user_id?: string
         }
         Relationships: []
