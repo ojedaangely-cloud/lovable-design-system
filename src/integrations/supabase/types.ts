@@ -527,6 +527,36 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_entries_cantarito: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          description: string
+          id: string
+          payment_method: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          payment_method?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          payment_method?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       v_ganancias_cambios: {
