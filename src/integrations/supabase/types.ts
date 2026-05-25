@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      categorias: {
+        Row: {
+          activo: boolean | null
+          id: string
+          nombre: string
+          padre_id: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          id: string
+          nombre: string
+          padre_id?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          id?: string
+          nombre?: string
+          padre_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categorias_padre_id_fkey"
+            columns: ["padre_id"]
+            isOneToOne: false
+            referencedRelation: "categorias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       currency_exchanges: {
         Row: {
           amount_bcv: number
@@ -116,35 +145,84 @@ export type Database = {
       expense_entries: {
         Row: {
           amount: number
+          categoria_id: string | null
           category: string
           created_at: string
           date: string
           description: string
           id: string
           invoice_url: string | null
+          paid_by: string | null
           user_id: string
         }
         Insert: {
           amount?: number
+          categoria_id?: string | null
           category?: string
           created_at?: string
           date?: string
           description?: string
           id?: string
           invoice_url?: string | null
+          paid_by?: string | null
           user_id: string
         }
         Update: {
           amount?: number
+          categoria_id?: string | null
           category?: string
           created_at?: string
           date?: string
           description?: string
           id?: string
           invoice_url?: string | null
+          paid_by?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "expense_entries_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gastos: {
+        Row: {
+          cantidad: number
+          categoria_id: string | null
+          descripcion: string | null
+          fecha: string
+          id: string
+          url_factura: string | null
+        }
+        Insert: {
+          cantidad: number
+          categoria_id?: string | null
+          descripcion?: string | null
+          fecha: string
+          id?: string
+          url_factura?: string | null
+        }
+        Update: {
+          cantidad?: number
+          categoria_id?: string | null
+          descripcion?: string | null
+          fecha?: string
+          id?: string
+          url_factura?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gastos_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       incomes: {
         Row: {
