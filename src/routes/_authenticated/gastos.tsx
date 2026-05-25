@@ -29,6 +29,7 @@ type Expense = {
   amount: number;
   invoice_url: string | null;
   user_id: string;
+  paid_by: string | null;
 };
 
 function Gastos() {
@@ -37,6 +38,7 @@ function Gastos() {
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("general");
+  const [paidBy, setPaidBy] = useState("caja_borrego");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -55,6 +57,7 @@ function Gastos() {
   const [editAmount, setEditAmount] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [editDate, setEditDate] = useState("");
+  const [editPaidBy, setEditPaidBy] = useState("");
 
   // Resolve Roles
   const isAdmin = role === "admin";
@@ -210,6 +213,7 @@ function Gastos() {
         category,
         invoice_url,
         date: date,
+        paid_by: paidBy,
       });
       if (error) throw error;
       setDesc("");
@@ -244,6 +248,7 @@ function Gastos() {
     setEditAmount(e.amount.toString());
     setEditCategory(e.category);
     setEditDate(e.date);
+    setEditPaidBy(e.paid_by ?? "otro");
   };
 
   const updateExpense = async () => {
@@ -257,6 +262,7 @@ function Gastos() {
         amount: Number(editAmount),
         category: editCategory,
         date: editDate,
+        paid_by: editPaidBy,
       })
       .eq("id", editingExpense.id);
 
@@ -434,13 +440,36 @@ function Gastos() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="categoryInput">Categoría</Label>
-                <Input
+                <select
                   id="categoryInput"
-                  placeholder="Ej. Ingredientes, Servicios"
                   value={category}
-                  className="rounded-xl border-border/80 text-sm"
+                  className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                   onChange={(e) => setCategory(e.target.value)}
-                />
+                >
+                  <option value="general">General</option>
+                  <option value="limpieza">Limpieza</option>
+                  <option value="combustible">Combustible</option>
+                  <option value="publicidad">Publicidad</option>
+                  <option value="ingredientes">Ingredientes</option>
+                  <option value="gasolina">Gasolina</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="paidByInput">Pagador</Label>
+                <select
+                  id="paidByInput"
+                  value={paidBy}
+                  className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  onChange={(e) => setPaidBy(e.target.value)}
+                >
+                  <option value="rony">Rony</option>
+                  <option value="kandy">Kandy</option>
+                  <option value="angel">Angel</option>
+                  <option value="sarita">Sarita</option>
+                  <option value="caja_borrego">Caja Borrego</option>
+                  <option value="caja_cantarito">Caja Cantarito</option>
+                  <option value="otro">Otro</option>
+                </select>
               </div>
 
               <Button
@@ -533,6 +562,7 @@ function Gastos() {
                   <TableRow>
                     <TableHead className="font-bold text-xs">Fecha</TableHead>
                     <TableHead className="font-bold text-xs">Categoría</TableHead>
+                    <TableHead className="font-bold text-xs">Pagador</TableHead>
                     <TableHead className="font-bold text-xs">Descripción</TableHead>
                     <TableHead className="font-bold text-xs text-center w-24">Factura</TableHead>
                     <TableHead className="font-bold text-xs text-right">Monto</TableHead>
@@ -546,6 +576,7 @@ function Gastos() {
                       <TableRow key={e.id} className="hover:bg-accent/30 transition-colors">
                         <TableCell className="text-xs font-semibold font-mono whitespace-nowrap">{e.date}</TableCell>
                         <TableCell className="text-xs font-semibold capitalize text-primary whitespace-nowrap">{e.category}</TableCell>
+                        <TableCell className="text-xs font-semibold capitalize whitespace-nowrap">{e.paid_by ? e.paid_by.replace(/_/g, ' ') : '—'}</TableCell>
                         <TableCell className="text-xs font-medium text-foreground max-w-[180px] truncate">{e.description}</TableCell>
                         <TableCell className="text-center">
                           {e.invoice_url ? (
@@ -598,7 +629,7 @@ function Gastos() {
                   })}
                   {filteredExpenses.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-xs py-8 text-muted-foreground italic font-medium">
+                      <TableCell colSpan={7} className="text-center text-xs py-8 text-muted-foreground italic font-medium">
                         No se encontraron gastos para este período
                       </TableCell>
                     </TableRow>
@@ -634,12 +665,36 @@ function Gastos() {
             </div>
             <div className="space-y-1">
               <Label htmlFor="editCategory">Categoría</Label>
-              <Input
+              <select
                 id="editCategory"
                 value={editCategory}
-                className="rounded-xl border-border/80"
+                className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 onChange={(e) => setEditCategory(e.target.value)}
-              />
+              >
+                <option value="general">General</option>
+                <option value="limpieza">Limpieza</option>
+                <option value="combustible">Combustible</option>
+                <option value="publicidad">Publicidad</option>
+                <option value="ingredientes">Ingredientes</option>
+                <option value="gasolina">Gasolina</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="editPaidBy">Pagador</Label>
+              <select
+                id="editPaidBy"
+                value={editPaidBy}
+                className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                onChange={(e) => setEditPaidBy(e.target.value)}
+              >
+                <option value="rony">Rony</option>
+                <option value="kandy">Kandy</option>
+                <option value="angel">Angel</option>
+                <option value="sarita">Sarita</option>
+                <option value="caja_borrego">Caja Borrego</option>
+                <option value="caja_cantarito">Caja Cantarito</option>
+                <option value="otro">Otro</option>
+              </select>
             </div>
             <div className="space-y-1">
               <Label htmlFor="editDesc">Descripción</Label>

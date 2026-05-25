@@ -29,7 +29,7 @@ export type Sale = {
   user_id: string;
 };
 
-export function VentasCommon({ branchTitle, branchKey, loadAll }: { branchTitle: string; branchKey?: string; loadAll?: boolean }) {
+export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; branchKey?: string }) {
   const { user, role } = useAuth();
   const [sales, setSales] = useState<Sale[]>([]);
   const [desc, setDesc] = useState("");
@@ -54,11 +54,15 @@ export function VentasCommon({ branchTitle, branchKey, loadAll }: { branchTitle:
   const load = async () => {
     const query = supabase.from("sales_entries").select("*").order("date", { ascending: false }).limit(200);
 
-    const response = loadAll
-      ? await query
-      : branchKey
-      ? await query.ilike("restaurant_branch", branchKey)
-      : await query;
+    let response;
+    if (branchKey === "borrego") {
+      // Include legacy records with NULL branch (assumed to be Borrego)
+      response = await query.or(`restaurant_branch.eq.${branchKey},restaurant_branch.is.null`);
+    } else if (branchKey) {
+      response = await query.eq("restaurant_branch", branchKey);
+    } else {
+      response = await query;
+    }
 
     if (response.error) {
       console.error("Error cargando ventas:", response.error);
