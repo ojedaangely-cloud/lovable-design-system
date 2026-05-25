@@ -502,6 +502,7 @@ export type Database = {
           description: string
           id: string
           payment_method: string
+          restaurant_branch: string
           user_id: string
         }
         Insert: {
@@ -511,6 +512,7 @@ export type Database = {
           description?: string
           id?: string
           payment_method?: string
+          restaurant_branch?: string
           user_id: string
         }
         Update: {
@@ -520,6 +522,7 @@ export type Database = {
           description?: string
           id?: string
           payment_method?: string
+          restaurant_branch?: string
           user_id?: string
         }
         Relationships: []
