@@ -15,7 +15,8 @@ import logo from "@/assets/logo-borrego.jpg";
 
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Ventas", url: "/ventas", icon: ShoppingCart },
+  { title: "Ventas Borrego", url: "/ventas", icon: ShoppingCart },
+  { title: "Ventas Cantarito Taque-ria & Karaoke", url: "/ventas-cantarito", icon: ShoppingCart },
   { title: "Gastos", url: "/gastos", icon: Receipt },
   { title: "Inventario", url: "/inventario", icon: Package },
   { title: "Nómina y Personal", url: "/nomina", icon: Users },

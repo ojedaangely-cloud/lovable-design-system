@@ -42,9 +42,11 @@ export function UploadReceiptDialog({
   userId,
   disabled,
   onSaved,
+  restaurantBranch,
 }: {
   userId: string | undefined;
   disabled?: boolean;
+  restaurantBranch?: string;
   onSaved: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -135,6 +137,7 @@ export function UploadReceiptDialog({
       description: `Factura ${r.invoice}`,
       amount: r.amount,
       payment_method: "efectivo",
+      ...(restaurantBranch ? { restaurant_branch: restaurantBranch } : {}),
     }));
     const { error } = await supabase.from("sales_entries").insert(payload);
     setSaving(false);
