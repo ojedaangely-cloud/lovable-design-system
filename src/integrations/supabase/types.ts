@@ -120,6 +120,7 @@ export type Database = {
           created_at: string
           hourly_rate: number
           id: string
+          linked_user_id: string | null
           name: string
           position: string
           user_id: string
@@ -128,6 +129,7 @@ export type Database = {
           created_at?: string
           hourly_rate?: number
           id?: string
+          linked_user_id?: string | null
           name: string
           position?: string
           user_id: string
@@ -136,6 +138,7 @@ export type Database = {
           created_at?: string
           hourly_rate?: number
           id?: string
+          linked_user_id?: string | null
           name?: string
           position?: string
           user_id?: string
@@ -394,6 +397,50 @@ export type Database = {
             columns: ["expense_entry_id"]
             isOneToOne: false
             referencedRelation: "expense_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_entries: {
+        Row: {
+          clock_in: string
+          clock_out: string | null
+          created_at: string | null
+          date: string
+          employee_id: string
+          hours_worked: number | null
+          id: string
+          is_paid: boolean
+          user_id: string
+        }
+        Insert: {
+          clock_in?: string
+          clock_out?: string | null
+          created_at?: string | null
+          date?: string
+          employee_id: string
+          hours_worked?: number | null
+          id?: string
+          is_paid?: boolean
+          user_id: string
+        }
+        Update: {
+          clock_in?: string
+          clock_out?: string | null
+          created_at?: string | null
+          date?: string
+          employee_id?: string
+          hours_worked?: number | null
+          id?: string
+          is_paid?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]

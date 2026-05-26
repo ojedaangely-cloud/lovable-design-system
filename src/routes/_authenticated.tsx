@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -13,10 +13,17 @@ export const Route = createFileRoute("/_authenticated")({
 function AuthLayout() {
   const { session, user, loading, role } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    if (!loading && !session) navigate({ to: "/login" });
-  }, [loading, session, navigate]);
+    if (!loading && !session) {
+      navigate({ to: "/login", replace: true });
+    } else if (!loading && session) {
+      if ((role === "pending" || role === "employee") && location.pathname !== "/nomina") {
+        navigate({ to: "/nomina", replace: true });
+      }
+    }
+  }, [loading, session, navigate, role, location.pathname]);
 
   if (loading || !session) {
     return (

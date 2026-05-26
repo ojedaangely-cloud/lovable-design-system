@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -20,7 +20,11 @@ import {
   Calculator, 
   CheckCircle2, 
   AlertTriangle,
-  Lock
+  Lock,
+  Play,
+  Square,
+  Calendar,
+  History
 } from "lucide-react";
 import {
   Dialog,
@@ -41,6 +45,7 @@ type Employee = {
   position: string;
   hourly_rate: number;
   user_id: string;
+  linked_user_id: string | null;
   created_at: string;
 };
 
@@ -62,16 +67,49 @@ type PayrollRecord = {
   };
 };
 
+type TimeEntry = {
+  id: string;
+  employee_id: string;
+  user_id: string;
+  date: string;
+  clock_in: string;
+  clock_out: string | null;
+  hours_worked: number | null;
+  is_paid: boolean;
+  created_at: string;
+  employees?: {
+    name: string;
+    position: string;
+    hourly_rate: number;
+  };
+};
+
 function Nomina() {
   const { user, role } = useAuth();
-  const [activeTab, setActiveTab] = useState<"employees" | "payroll">("employees");
+  
+  // Resolve role checks
+  const isAdmin = role === "admin";
+  const isManager = role === "manager";
+  const isEmployee = role === "employee";
+  const canWrite = isAdmin || isManager;
+
+  const [activeTab, setActiveTab] = useState<"employees" | "payroll" | "time_tracking">(
+    isEmployee ? "time_tracking" : "employees"
+  );
+  
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>([]);
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+
+  // Employee App State
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
+  const [activeEntry, setActiveEntry] = useState<TimeEntry | null>(null);
 
   // State for Add Employee
   const [empName, setEmpName] = useState("");
   const [empPosition, setEmpPosition] = useState("Mesero");
   const [empRate, setEmpRate] = useState("");
+  const [empLinkedUser, setEmpLinkedUser] = useState("");
 
   // State for Add Payroll Log
   const [payEmployeeId, setPayEmployeeId] = useState("");
@@ -85,43 +123,111 @@ function Nomina() {
   const [editEmpName, setEditEmpName] = useState("");
   const [editEmpPosition, setEditEmpPosition] = useState("");
   const [editEmpRate, setEditEmpRate] = useState("");
+  const [editEmpLinkedUser, setEditEmpLinkedUser] = useState("");
 
   const [editingPayroll, setEditingPayroll] = useState<PayrollRecord | null>(null);
   const [editPayHours, setEditPayHours] = useState("");
   const [editPayRate, setEditPayRate] = useState("");
   const [editPayNotes, setEditPayNotes] = useState("");
 
-  // Resolve role checks
-  const isAdmin = role === "admin";
-  const isManager = role === "manager";
-  const isEmployee = role === "employee";
-  const canWrite = isAdmin || isManager;
+  // Helper to get last Wednesday
+  const getLastWednesday = () => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    const day = d.getDay();
+    const diff = (day < 3 ? 7 : 0) + day - 3;
+    d.setDate(d.getDate() - diff);
+    return d;
+  };
+
+  // Helper to get next Wednesday
+  const getNextWednesday = () => {
+    const d = getLastWednesday();
+    d.setDate(d.getDate() + 7);
+    return d;
+  };
+
+  const lastWednesday = getLastWednesday();
+  const nextWednesday = getNextWednesday();
 
   const loadData = async () => {
+    if (!user) return;
+
     // Load employees
     const { data: empData } = await supabase
       .from("employees")
       .select("*")
       .order("name");
-    if (empData) setEmployees(empData as Employee[]);
+    
+    if (empData) {
+      setEmployees(empData as Employee[]);
 
-    // Load payroll records with employee joined details
-    const { data: prData } = await supabase
-      .from("payroll_records")
+      // Auto-select employee for logged in user if linked
+      const linkedEmp = empData.find(e => e.linked_user_id === user.id);
+      if (linkedEmp && !selectedEmployeeId) {
+        setSelectedEmployeeId(linkedEmp.id);
+      } else if (!selectedEmployeeId && isEmployee) {
+        const savedEmp = localStorage.getItem("borrego_employee_id");
+        if (savedEmp && empData.find(e => e.id === savedEmp)) {
+          setSelectedEmployeeId(savedEmp);
+        }
+      }
+    }
+
+    if (canWrite) {
+      // Load payroll records with employee joined details
+      const { data: prData } = await supabase
+        .from("payroll_records")
+        .select(`
+          *,
+          employees (
+            name,
+            position
+          )
+        `)
+        .order("date", { ascending: false });
+      if (prData) setPayrollRecords(prData as unknown as PayrollRecord[]);
+    }
+
+    // Load time entries based on role
+    let timeQuery = supabase
+      .from("time_entries")
       .select(`
         *,
         employees (
           name,
-          position
+          position,
+          hourly_rate
         )
       `)
-      .order("date", { ascending: false });
-    if (prData) setPayrollRecords(prData as unknown as PayrollRecord[]);
+      .order("clock_in", { ascending: false });
+
+    // If employee, only load their entries or if not linked yet, maybe we shouldn't show others
+    // For safety, RLS policy allows authenticated users to see all time_entries, but we filter here
+    if (isEmployee) {
+       // We'll filter later or let them pick their name
+    }
+
+    const { data: teData } = await timeQuery;
+    
+    if (teData) {
+      const entries = teData as unknown as TimeEntry[];
+      setTimeEntries(entries);
+      
+      // Find active entry for selected employee
+      if (selectedEmployeeId) {
+        const active = entries.find(e => e.employee_id === selectedEmployeeId && !e.clock_out);
+        setActiveEntry(active || null);
+      }
+    }
   };
 
   useEffect(() => {
     loadData();
-  }, []);
+    // Refresh active entry check every minute
+    const interval = setInterval(loadData, 60000);
+    return () => clearInterval(interval);
+  }, [user, selectedEmployeeId]);
 
   // Update payroll rate automatically when employee is selected
   useEffect(() => {
@@ -146,6 +252,7 @@ function Nomina() {
       name: empName,
       position: empPosition,
       hourly_rate: Number(empRate),
+      linked_user_id: empLinkedUser || null
     });
 
     if (error) return toast.error(error.message);
@@ -154,6 +261,7 @@ function Nomina() {
     setEmpName("");
     setEmpPosition("Mesero");
     setEmpRate("");
+    setEmpLinkedUser("");
     loadData();
   };
 
@@ -174,6 +282,7 @@ function Nomina() {
         name: editEmpName,
         position: editEmpPosition,
         hourly_rate: Number(editEmpRate),
+        linked_user_id: editEmpLinkedUser || null
       })
       .eq("id", editingEmployee.id);
 
@@ -195,7 +304,7 @@ function Nomina() {
     }
 
     const confirmDelete = window.confirm(
-      `¿Estás seguro de eliminar a ${emp.name}? Esto eliminará todo su historial de nóminas.`
+      `¿Estás seguro de eliminar a ${emp.name}? Esto eliminará todo su historial.`
     );
     if (!confirmDelete) return;
 
@@ -218,10 +327,117 @@ function Nomina() {
     if (error) return toast.error(error.message);
 
     toast.success("Empleado eliminado");
+    if (selectedEmployeeId === emp.id) setSelectedEmployeeId("");
     loadData();
   };
 
-  // Add Payroll Log (Registers Hours & creates Gasto Automatically!)
+  // Clock In / Clock Out
+  const handleToggleClock = async () => {
+    if (!user || !selectedEmployeeId) return toast.error("Selecciona tu nombre primero.");
+
+    if (activeEntry) {
+      // Clock Out
+      const clockOutTime = new Date().toISOString();
+      const clockInTime = new Date(activeEntry.clock_in);
+      
+      // Calculate hours worked
+      const diffMs = new Date(clockOutTime).getTime() - clockInTime.getTime();
+      const hoursWorked = diffMs / (1000 * 60 * 60);
+
+      const { error } = await supabase
+        .from("time_entries")
+        .update({
+          clock_out: clockOutTime,
+          hours_worked: hoursWorked
+        })
+        .eq("id", activeEntry.id);
+
+      if (error) return toast.error(error.message);
+      toast.success("Salida registrada con éxito.");
+    } else {
+      // Clock In
+      const { error } = await supabase
+        .from("time_entries")
+        .insert({
+          employee_id: selectedEmployeeId,
+          user_id: user.id,
+          date: new Date().toISOString().split("T")[0]
+        });
+
+      if (error) return toast.error(error.message);
+      toast.success("Entrada registrada con éxito.");
+    }
+
+    loadData();
+  };
+
+  const handleSelectEmployee = (id: string) => {
+    setSelectedEmployeeId(id);
+    localStorage.setItem("borrego_employee_id", id);
+  };
+
+  // Liquidation process (Admin only)
+  const handleLiquidate = async (empId: string, empName: string, unpaidTotal: number, unpaidHours: number, currentRate: number) => {
+    if (!canWrite || !user) return;
+    
+    if (unpaidTotal <= 0) return toast.error("No hay saldo pendiente por liquidar.");
+
+    const confirmLiquidate = window.confirm(
+      `¿Liquidar pago de $${unpaidTotal.toFixed(2)} a ${empName}?\n\nEsto marcará las horas como pagadas y creará un registro de nómina y gasto automáticamente.`
+    );
+    if (!confirmLiquidate) return;
+
+    // 1. Create corresponding expense entry
+    const { data: expenseData, error: expenseError } = await supabase
+      .from("expense_entries")
+      .insert({
+        user_id: user.id,
+        date: new Date().toISOString().split("T")[0],
+        category: "personal",
+        description: `Nómina (Ciclo Semanal): ${empName} - ${unpaidHours.toFixed(1)} hrs`,
+        amount: unpaidTotal,
+        paid_by: "caja_borrego"
+      })
+      .select()
+      .single();
+
+    if (expenseError) return toast.error(`Error al registrar gasto: ${expenseError.message}`);
+
+    // 2. Insert the payroll record
+    const { error: payrollError } = await supabase.from("payroll_records").insert({
+      user_id: user.id,
+      employee_id: empId,
+      date: new Date().toISOString().split("T")[0],
+      hours_worked: unpaidHours,
+      hourly_rate: currentRate,
+      total_amount: unpaidTotal,
+      status: "pagado",
+      notes: "Liquidación ciclo semanal",
+      expense_entry_id: expenseData.id,
+    });
+
+    if (payrollError) {
+      await supabase.from("expense_entries").delete().eq("id", expenseData.id);
+      return toast.error(payrollError.message);
+    }
+
+    // 3. Mark time entries as paid
+    const { error: updateError } = await supabase
+      .from("time_entries")
+      .update({ is_paid: true })
+      .eq("employee_id", empId)
+      .eq("is_paid", false)
+      .not("clock_out", "is", null);
+
+    if (updateError) {
+      return toast.error("Error al marcar horas como pagadas, contacte soporte.");
+    }
+
+    toast.success("Pago liquidado y registrado correctamente.");
+    loadData();
+  };
+
+  // Add Payroll Log (Manual)
   const handleAddPayroll = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canWrite) return toast.error("No tienes permisos para registrar horas.");
@@ -265,7 +481,6 @@ function Nomina() {
     });
 
     if (payrollError) {
-      // Rollback the expense if payroll fails
       await supabase.from("expense_entries").delete().eq("id", expenseData.id);
       return toast.error(payrollError.message);
     }
@@ -277,11 +492,9 @@ function Nomina() {
     loadData();
   };
 
-  // Delete Payroll Log (Deletes linked Gasto Automatically!)
   const handleDeletePayroll = async (record: PayrollRecord) => {
     if (!canWrite) return toast.error("No tienes permisos para eliminar pagos.");
 
-    // Permissions check
     const isOwner = record.user_id === user?.id;
     if (!isAdmin && (!isManager || !isOwner)) {
       return toast.error("Solo puedes eliminar registros de pago creados por ti mismo.");
@@ -290,16 +503,10 @@ function Nomina() {
     const confirmDelete = window.confirm("¿Estás seguro de eliminar este registro de pago? Esto también anulará el gasto financiero.");
     if (!confirmDelete) return;
 
-    // 1. Delete associated expense entry
     if (record.expense_entry_id) {
-      const { error: expError } = await supabase
-        .from("expense_entries")
-        .delete()
-        .eq("id", record.expense_entry_id);
-      if (expError) console.warn("Error al anular gasto asociado:", expError.message);
+      await supabase.from("expense_entries").delete().eq("id", record.expense_entry_id);
     }
 
-    // 2. Delete payroll record
     const { error } = await supabase.from("payroll_records").delete().eq("id", record.id);
     if (error) return toast.error(error.message);
 
@@ -307,12 +514,10 @@ function Nomina() {
     loadData();
   };
 
-  // Edit Payroll
   const handleUpdatePayroll = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPayroll || !user) return;
 
-    // Permissions check
     const isOwner = editingPayroll.user_id === user.id;
     if (!isAdmin && (!isManager || !isOwner)) {
       return toast.error("Solo puedes editar registros creados por ti mismo.");
@@ -322,7 +527,6 @@ function Nomina() {
     const rate = Number(editPayRate);
     const total = hours * rate;
 
-    // Update payroll record
     const { error: prError } = await supabase
       .from("payroll_records")
       .update({
@@ -335,7 +539,6 @@ function Nomina() {
 
     if (prError) return toast.error(prError.message);
 
-    // Update linked expense entry
     if (editingPayroll.expense_entry_id) {
       const empNameStr = editingPayroll.employees?.name || "Empleado";
       await supabase
@@ -354,7 +557,7 @@ function Nomina() {
     loadData();
   };
 
-  // Financial Summaries for current month
+  // Calculations
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   const currentMonthPaid = payrollRecords
@@ -371,6 +574,219 @@ function Nomina() {
     })
     .reduce((sum, r) => sum + r.hours_worked, 0);
 
+  const selectedEmployeeData = employees.find(e => e.id === selectedEmployeeId);
+  const myTimeEntries = timeEntries.filter(e => e.employee_id === selectedEmployeeId);
+  
+  // Accumulated un-paid for selected employee
+  const myUnpaidEntries = myTimeEntries.filter(e => !e.is_paid && e.clock_out && e.hours_worked);
+  const myAccumulatedHours = myUnpaidEntries.reduce((sum, e) => sum + (e.hours_worked || 0), 0);
+  const myAccumulatedTotal = myAccumulatedHours * (selectedEmployeeData?.hourly_rate || 0);
+
+  // Group employee statistics for Admin view
+  const employeeStats = employees.map(emp => {
+    const empEntries = timeEntries.filter(e => e.employee_id === emp.id && !e.is_paid && e.clock_out && e.hours_worked);
+    const unpaidHours = empEntries.reduce((sum, e) => sum + (e.hours_worked || 0), 0);
+    const unpaidTotal = unpaidHours * emp.hourly_rate;
+    const isWorkingNow = timeEntries.some(e => e.employee_id === emp.id && !e.clock_out);
+    return { ...emp, unpaidHours, unpaidTotal, isWorkingNow };
+  });
+
+  // Calculate elapsed time for active entry
+  const [elapsedActiveHours, setElapsedActiveHours] = useState(0);
+  useEffect(() => {
+    if (!activeEntry) {
+      setElapsedActiveHours(0);
+      return;
+    }
+    const updateElapsed = () => {
+      const diff = new Date().getTime() - new Date(activeEntry.clock_in).getTime();
+      setElapsedActiveHours(diff / (1000 * 60 * 60));
+    };
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 60000);
+    return () => clearInterval(interval);
+  }, [activeEntry]);
+
+
+  // RENDER FOR PENDING ROLE
+  if (role === "pending") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4 animate-fade-in text-center px-4">
+        <div className="bg-amber-500/10 p-6 rounded-full">
+          <AlertTriangle className="h-12 w-12 text-amber-500" />
+        </div>
+        <h2 className="text-2xl font-bold">Cuenta en Revisión</h2>
+        <p className="text-muted-foreground max-w-md">
+          Tu cuenta ha sido creada exitosamente, pero un administrador aún debe asignarte un rol (Gerente o Empleado) para que puedas acceder a las funciones del sistema.
+        </p>
+      </div>
+    );
+  }
+
+  // RENDER FOR EMPLOYEE
+  if (isEmployee) {
+    return (
+      <div className="space-y-6 pb-12 animate-fade-in max-w-2xl mx-auto">
+        <div className="text-center py-6">
+          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-primary bg-clip-text text-transparent">
+            Control de Horas
+          </h1>
+          <p className="text-muted-foreground mt-2">Registra tu entrada y salida diaria.</p>
+        </div>
+
+        {!selectedEmployeeId ? (
+          <Card className="border-border/60 shadow-lg p-6">
+            <CardHeader className="text-center pb-6">
+              <CardTitle>Identifícate</CardTitle>
+              <CardDescription>Selecciona tu nombre de la lista para continuar.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <select
+                className="flex h-12 w-full rounded-xl border border-border/80 bg-background px-4 py-2 text-base focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+                onChange={(e) => handleSelectEmployee(e.target.value)}
+                value={selectedEmployeeId}
+              >
+                <option value="">-- Seleccionar mi nombre --</option>
+                {employees.map(e => (
+                  <option key={e.id} value={e.id}>{e.name} - {e.position}</option>
+                ))}
+              </select>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <Card className="border-border/80 shadow-xl overflow-hidden relative">
+              <div className={`absolute top-0 left-0 w-full h-1 ${activeEntry ? 'bg-emerald-500 animate-pulse' : 'bg-muted'}`} />
+              <CardContent className="p-8">
+                <div className="flex flex-col items-center justify-center space-y-6">
+                  
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold">{selectedEmployeeData?.name}</h2>
+                    <Badge variant="outline" className="mt-2 text-sm">{selectedEmployeeData?.position}</Badge>
+                  </div>
+
+                  {activeEntry ? (
+                    <div className="flex flex-col items-center space-y-2 py-4">
+                      <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                        <span className="relative flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                        </span>
+                        Turno Activo
+                      </div>
+                      <div className="text-4xl font-mono font-black tabular-nums tracking-tighter">
+                        {elapsedActiveHours.toFixed(2)} <span className="text-2xl text-muted-foreground">hrs</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Entrada: {new Date(activeEntry.clock_in).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'})}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-6 text-center text-muted-foreground font-medium">
+                      Actualmente fuera de turno.
+                    </div>
+                  )}
+
+                  <Button 
+                    onClick={handleToggleClock}
+                    className={`w-full h-16 text-lg font-bold rounded-2xl shadow-lg transition-all duration-300 ${
+                      activeEntry 
+                        ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" 
+                        : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    }`}
+                  >
+                    {activeEntry ? (
+                      <><Square className="mr-3 h-5 w-5" fill="currentColor" /> Finalizar Turno</>
+                    ) : (
+                      <><Play className="mr-3 h-5 w-5" fill="currentColor" /> Iniciar Turno</>
+                    )}
+                  </Button>
+
+                  <div className="w-full flex justify-end">
+                    <Button variant="link" size="sm" className="text-xs text-muted-foreground" onClick={() => setSelectedEmployeeId("")}>
+                      ¿No eres {selectedEmployeeData?.name}?
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Card className="border-border/60 shadow-sm bg-card/50">
+                <CardContent className="p-4 flex flex-col items-center justify-center text-center space-y-1 h-full">
+                  <span className="text-xs font-bold text-muted-foreground uppercase">Horas Acumuladas</span>
+                  <span className="text-2xl font-black">{myAccumulatedHours.toFixed(2)}</span>
+                  <span className="text-[10px] text-muted-foreground">Este ciclo de pago</span>
+                </CardContent>
+              </Card>
+              <Card className="border-border/60 shadow-sm bg-card/50">
+                <CardContent className="p-4 flex flex-col items-center justify-center text-center space-y-1 h-full">
+                  <span className="text-xs font-bold text-muted-foreground uppercase">Ganancia Estimada</span>
+                  <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">${myAccumulatedTotal.toFixed(2)}</span>
+                  <span className="text-[10px] text-muted-foreground">A pagar el miércoles</span>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-3 border-b border-border/40">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <History className="h-4 w-4" /> Historial Reciente
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        <TableHead className="text-xs">Día</TableHead>
+                        <TableHead className="text-xs">Entrada - Salida</TableHead>
+                        <TableHead className="text-xs text-center">Horas</TableHead>
+                        <TableHead className="text-xs text-right">Estado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {myTimeEntries.slice(0, 10).map((entry) => (
+                        <TableRow key={entry.id}>
+                          <TableCell className="text-xs font-medium whitespace-nowrap">
+                            {new Date(entry.date).toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' })}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(entry.clock_in).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'})} 
+                            {' - '} 
+                            {entry.clock_out ? new Date(entry.clock_out).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}) : '...'}
+                          </TableCell>
+                          <TableCell className="text-xs font-mono font-bold text-center">
+                            {entry.hours_worked ? entry.hours_worked.toFixed(2) : '-'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {entry.is_paid ? (
+                              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-none">Pagado</Badge>
+                            ) : entry.clock_out ? (
+                              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-none">Pendiente</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-600 border-none animate-pulse">Activo</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {myTimeEntries.length === 0 && (
+                         <TableRow>
+                          <TableCell colSpan={4} className="text-center py-6 text-xs text-muted-foreground italic">No hay registros recientes.</TableCell>
+                         </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // RENDER FOR ADMIN / MANAGER
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
       {/* Premium Header */}
@@ -380,7 +796,7 @@ function Nomina() {
             Nómina y Personal
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Administra a tus empleados, registra horas trabajadas y mantén al día tus gastos financieros.
+            Administra a tus empleados, registra horas trabajadas y liquida pagos.
           </p>
         </div>
       </div>
@@ -429,42 +845,178 @@ function Nomina() {
           <CardContent>
             <div className="text-2xl font-bold">{currentMonthHours.toFixed(1)} hrs</div>
             <p className="text-[10px] text-muted-foreground mt-1">
-              Horas totales registradas
+              Horas pagadas este mes
             </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Tabs Selector */}
-      <div className="flex gap-2 p-1 bg-muted/60 rounded-xl max-w-sm border border-border/40">
+      <div className="flex flex-wrap gap-2 p-1 bg-muted/60 rounded-xl w-full max-w-xl border border-border/40 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab("time_tracking")}
+          className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-bold rounded-lg transition-all ${
+            activeTab === "time_tracking"
+              ? "bg-card shadow-sm text-foreground border border-border/40"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Clock className="h-4 w-4 text-blue-500" />
+          Control de Horas
+        </button>
         <button
           onClick={() => setActiveTab("employees")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-lg transition-all ${
+          className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-bold rounded-lg transition-all ${
             activeTab === "employees"
               ? "bg-card shadow-sm text-foreground border border-border/40"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          <Users className="h-3.5 w-3.5" />
+          <Users className="h-4 w-4" />
           Empleados
         </button>
         <button
           onClick={() => setActiveTab("payroll")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-lg transition-all ${
+          className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-bold rounded-lg transition-all ${
             activeTab === "payroll"
               ? "bg-card shadow-sm text-foreground border border-border/40"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          <Clock className="h-3.5 w-3.5" />
-          Nómina y Pagos
+          <DollarSign className="h-4 w-4" />
+          Historial Pagos
         </button>
       </div>
+
+      {/* TAB CONTENT: TIME TRACKING (NEW) */}
+      {activeTab === "time_tracking" && (
+        <div className="space-y-6">
+          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Calendar className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground">Ciclo de Pago Semanal</h3>
+                <p className="text-xs text-muted-foreground">
+                  Corte: Miércoles a Miércoles
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-4 text-sm font-medium bg-background px-4 py-2 rounded-xl border border-border/50 shadow-sm">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground uppercase">Inicio</span>
+                <span>{lastWednesday.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}</span>
+              </div>
+              <div className="w-px bg-border/60 mx-1"></div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-primary uppercase font-bold">Próx. Pago</span>
+                <span className="text-primary font-bold">{nextWednesday.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {employeeStats.map(emp => (
+              <Card key={emp.id} className={`border-border/60 shadow-md relative overflow-hidden transition-all hover:shadow-lg ${emp.isWorkingNow ? 'ring-2 ring-emerald-500/50' : ''}`}>
+                {emp.isWorkingNow && (
+                   <div className="absolute top-3 right-3 flex h-3 w-3">
+                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                     <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                   </div>
+                )}
+                <CardHeader className="pb-2 pt-5">
+                  <CardTitle className="text-lg font-extrabold">{emp.name}</CardTitle>
+                  <CardDescription className="flex items-center justify-between">
+                    <span>{emp.position}</span>
+                    <span className="font-mono font-medium">${emp.hourly_rate}/hr</span>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-muted/40 rounded-xl p-3 flex justify-between items-center">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold">Horas por Pagar</span>
+                      <span className="font-black text-xl font-mono">{emp.unpaidHours.toFixed(2)}</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold">Total a Pagar</span>
+                      <span className="font-black text-xl text-emerald-600 dark:text-emerald-400 font-mono">${emp.unpaidTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    className="w-full bg-primary hover:bg-primary/90 text-white font-bold"
+                    disabled={emp.unpaidTotal <= 0}
+                    onClick={() => handleLiquidate(emp.id, emp.name, emp.unpaidTotal, emp.unpaidHours, emp.hourly_rate)}
+                  >
+                    Liquidar Pago
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+            
+            {employeeStats.length === 0 && (
+              <div className="col-span-full p-8 text-center border-2 border-dashed border-border/60 rounded-2xl text-muted-foreground">
+                No hay empleados registrados. Añade personal desde la pestaña "Empleados".
+              </div>
+            )}
+          </div>
+
+          <Card className="border-border/60 shadow-sm mt-8">
+            <CardHeader>
+              <CardTitle className="text-base">Últimas Entradas y Salidas</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+               <div className="overflow-x-auto">
+                 <Table>
+                   <TableHeader>
+                     <TableRow>
+                       <TableHead className="text-xs">Día</TableHead>
+                       <TableHead className="text-xs">Empleado</TableHead>
+                       <TableHead className="text-xs">Horario</TableHead>
+                       <TableHead className="text-xs text-center">Horas</TableHead>
+                       <TableHead className="text-xs text-right">Estado Pago</TableHead>
+                     </TableRow>
+                   </TableHeader>
+                   <TableBody>
+                      {timeEntries.slice(0, 20).map((entry) => (
+                        <TableRow key={entry.id}>
+                          <TableCell className="text-xs font-medium whitespace-nowrap">
+                            {new Date(entry.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
+                          </TableCell>
+                          <TableCell className="text-xs font-bold whitespace-nowrap">
+                            {entry.employees?.name}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap font-mono">
+                            {new Date(entry.clock_in).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'})} 
+                            {' - '} 
+                            {entry.clock_out ? new Date(entry.clock_out).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}) : '...'}
+                          </TableCell>
+                          <TableCell className="text-xs font-mono font-bold text-center">
+                            {entry.hours_worked ? entry.hours_worked.toFixed(2) : '-'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {entry.is_paid ? (
+                              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-none">Pagado</Badge>
+                            ) : entry.clock_out ? (
+                              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-none">Pendiente</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-600 border-none animate-pulse">Activo</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                   </TableBody>
+                 </Table>
+               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* TAB CONTENT: EMPLOYEES */}
       {activeTab === "employees" && (
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Add Employee Form */}
           <Card className="bg-card/50 backdrop-blur-md border border-border/80 shadow-lg h-fit">
             <CardHeader>
               <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -473,63 +1025,67 @@ function Nomina() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {isEmployee ? (
-                <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-2xl text-xs text-muted-foreground">
-                  <Lock className="h-5 w-5 text-primary" />
-                  Solo los administradores y gerentes pueden registrar empleados.
+              <form onSubmit={handleAddEmployee} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="empName">Nombre y Apellido</Label>
+                  <Input
+                    id="empName"
+                    required
+                    placeholder="Ej. Juan Pérez"
+                    value={empName}
+                    onChange={(e) => setEmpName(e.target.value)}
+                  />
                 </div>
-              ) : (
-                <form onSubmit={handleAddEmployee} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="empName">Nombre y Apellido</Label>
-                    <Input
-                      id="empName"
-                      required
-                      placeholder="Ej. Juan Pérez"
-                      value={empName}
-                      onChange={(e) => setEmpName(e.target.value)}
-                    />
-                  </div>
 
-                  <div className="space-y-1.5">
-                    <Label htmlFor="empPosition">Cargo / Posición</Label>
-                    <select
-                      id="empPosition"
-                      value={empPosition}
-                      onChange={(e) => setEmpPosition(e.target.value)}
-                      className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                    >
-                      <option value="Mesero">Mesero / Mesera</option>
-                      <option value="Cocinero">Cocinero / Chef</option>
-                      <option value="Cajero">Cajero / Cajera</option>
-                      <option value="Repartidor">Repartidor</option>
-                      <option value="Gerente">Gerente</option>
-                      <option value="Limpieza">Personal de Limpieza</option>
-                    </select>
-                  </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="empPosition">Cargo / Posición</Label>
+                  <select
+                    id="empPosition"
+                    value={empPosition}
+                    onChange={(e) => setEmpPosition(e.target.value)}
+                    className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="Mesero">Mesero / Mesera</option>
+                    <option value="Cocinero">Cocinero / Chef</option>
+                    <option value="Cajero">Cajero / Cajera</option>
+                    <option value="Repartidor">Repartidor</option>
+                    <option value="Gerente">Gerente</option>
+                    <option value="Limpieza">Personal de Limpieza</option>
+                  </select>
+                </div>
 
-                  <div className="space-y-1.5">
-                    <Label htmlFor="empRate">Pago por Hora ($)</Label>
-                    <Input
-                      id="empRate"
-                      required
-                      type="number"
-                      step="0.01"
-                      placeholder="Ej. 12.50"
-                      value={empRate}
-                      onChange={(e) => setEmpRate(e.target.value)}
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="empRate">Pago por Hora ($)</Label>
+                  <Input
+                    id="empRate"
+                    required
+                    type="number"
+                    step="0.01"
+                    placeholder="Ej. 12.50"
+                    value={empRate}
+                    onChange={(e) => setEmpRate(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-1.5 pt-2 border-t border-border/40">
+                  <Label htmlFor="empLinkedUser" className="text-xs text-muted-foreground">
+                    ID de Usuario (Opcional - Para vincular cuenta de login)
+                  </Label>
+                  <Input
+                    id="empLinkedUser"
+                    placeholder="Ej. d0d8f..."
+                    value={empLinkedUser}
+                    onChange={(e) => setEmpLinkedUser(e.target.value)}
+                  />
+                </div>
 
-                  <Button type="submit" className="w-full bg-primary hover:bg-primary/95 text-white font-bold rounded-xl shadow-md">
-                    Registrar Empleado
-                  </Button>
-                </form>
-              )}
+                <Button type="submit" className="w-full bg-primary hover:bg-primary/95 text-white font-bold rounded-xl shadow-md">
+                  Registrar Empleado
+                </Button>
+              </form>
             </CardContent>
           </Card>
 
-          {/* Employees List */}
           <Card className="bg-card/50 backdrop-blur-md border border-border/80 shadow-lg lg:col-span-2">
             <CardHeader>
               <CardTitle className="text-lg font-bold">Listado de Empleados</CardTitle>
@@ -557,7 +1113,10 @@ function Nomina() {
 
                         return (
                           <TableRow key={emp.id} className="hover:bg-muted/40 transition-colors">
-                            <TableCell className="font-bold">{emp.name}</TableCell>
+                            <TableCell className="font-bold">
+                              {emp.name}
+                              {emp.linked_user_id && <Badge variant="secondary" className="ml-2 text-[8px] h-4">Vinculado</Badge>}
+                            </TableCell>
                             <TableCell>
                               <Badge variant="outline" className="rounded-lg px-2.5 py-0.5">
                                 {emp.position}
@@ -580,6 +1139,7 @@ function Nomina() {
                                     setEditEmpName(emp.name);
                                     setEditEmpPosition(emp.position);
                                     setEditEmpRate(emp.hourly_rate.toString());
+                                    setEditEmpLinkedUser(emp.linked_user_id || "");
                                   }}
                                 >
                                   <Edit2 className="h-3.5 w-3.5" />
@@ -606,27 +1166,22 @@ function Nomina() {
         </div>
       )}
 
-      {/* TAB CONTENT: PAYROLL */}
+      {/* TAB CONTENT: PAYROLL (HISTORICAL MANUALLY ADDED) */}
       {activeTab === "payroll" && (
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Add Payroll Log Form */}
           <Card className="bg-card/50 backdrop-blur-md border border-border/80 shadow-lg h-fit">
             <CardHeader>
               <CardTitle className="text-lg font-bold flex items-center gap-2">
                 <Calculator className="h-5 w-5 text-primary" />
-                Registrar Pago de Horas
+                Registrar Pago Manual
               </CardTitle>
+              <CardDescription className="text-xs">Solo para ajustes o pagos fuera de ciclo.</CardDescription>
             </CardHeader>
             <CardContent>
-              {isEmployee ? (
-                <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-2xl text-xs text-muted-foreground">
-                  <Lock className="h-5 w-5 text-primary" />
-                  Solo los administradores y gerentes pueden registrar pagos.
-                </div>
-              ) : employees.length === 0 ? (
+              {employees.length === 0 ? (
                 <div className="flex items-center gap-3 p-4 bg-amber-500/10 rounded-2xl text-xs text-amber-600 dark:text-amber-400">
                   <AlertTriangle className="h-5 w-5 shrink-0" />
-                  Debes registrar al menos un empleado antes de registrar pagos de nómina.
+                  Debes registrar al menos un empleado.
                 </div>
               ) : (
                 <form onSubmit={handleAddPayroll} className="space-y-4">
@@ -699,29 +1254,28 @@ function Nomina() {
                     <Label htmlFor="payNotes">Notas / Periodo</Label>
                     <Input
                       id="payNotes"
-                      placeholder="Ej. Semana del 11 al 17 de Mayo"
+                      placeholder="Ej. Adelanto o Ajuste"
                       value={payNotes}
                       onChange={(e) => setPayNotes(e.target.value)}
                     />
                   </div>
 
                   <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-600/95 text-white font-bold rounded-xl shadow-md">
-                    Registrar Pago y Cargar Gasto
+                    Registrar Pago Manual
                   </Button>
                 </form>
               )}
             </CardContent>
           </Card>
 
-          {/* Payroll List */}
           <Card className="bg-card/50 backdrop-blur-md border border-border/80 shadow-lg lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-lg font-bold">Historial de Pagos y Nóminas</CardTitle>
+              <CardTitle className="text-lg font-bold">Historial de Pagos y Liquidaciones</CardTitle>
             </CardHeader>
             <CardContent className="p-0 sm:p-6">
               {payrollRecords.length === 0 ? (
                 <div className="p-8 text-center text-sm text-muted-foreground">
-                  No hay registros de pago cargados. Registra las primeras horas trabajadas a la izquierda.
+                  No hay registros de pago cargados.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -859,6 +1413,16 @@ function Nomina() {
                 step="0.01"
                 value={editEmpRate}
                 onChange={(e) => setEditEmpRate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5 pt-2 border-t border-border/40">
+              <Label htmlFor="editEmpLinkedUser" className="text-xs text-muted-foreground">
+                ID de Usuario Vinculado (Opcional)
+              </Label>
+              <Input
+                id="editEmpLinkedUser"
+                value={editEmpLinkedUser}
+                onChange={(e) => setEditEmpLinkedUser(e.target.value)}
               />
             </div>
             <DialogFooter className="gap-2 sm:gap-0">

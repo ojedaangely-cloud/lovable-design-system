@@ -29,7 +29,23 @@ const generalItems = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { signOut } = useAuth();
+  const { signOut, role } = useAuth();
+
+  const visibleMenuItems = menuItems.filter(item => {
+    if (role === "pending") return false;
+    if (role === "employee") return item.title === "Nómina y Personal";
+    return true; // admin and manager see all
+  }).map(item => {
+    if (role === "employee" && item.title === "Nómina y Personal") {
+      return { ...item, title: "Control de Horas" };
+    }
+    return item;
+  });
+
+  const visibleGeneralItems = generalItems.filter(item => {
+    if (role === "pending" || role === "employee") return false;
+    return true;
+  });
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border bg-sidebar">
@@ -53,7 +69,7 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
-                {menuItems.map((item) => {
+                {visibleMenuItems.map((item) => {
                   const active = pathname === item.url;
                   return (
                     <SidebarMenuItem key={item.url} className="relative">
@@ -89,7 +105,7 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
-                {generalItems.map((item) => {
+                {visibleGeneralItems.map((item) => {
                   const active = pathname === item.url;
                   return (
                     <SidebarMenuItem key={item.title} className="relative">

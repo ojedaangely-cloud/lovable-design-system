@@ -6,13 +6,13 @@ type AuthContextValue = {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  role: "admin" | "manager" | "employee";
+  role: "admin" | "manager" | "employee" | "pending";
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export function getResolvedRole(email: string | undefined, metadataRole: string | undefined): "admin" | "manager" | "employee" {
+export function getResolvedRole(email: string | undefined, metadataRole: string | undefined): "admin" | "manager" | "employee" | "pending" {
   const normalizedEmail = email?.toLowerCase().trim();
   if (normalizedEmail === "ojedaangely@gmail.com") return "admin";
   
@@ -31,8 +31,8 @@ export function getResolvedRole(email: string | undefined, metadataRole: string 
     }
   }
   
-  const role = metadataRole || (normalizedEmail?.includes("admin") ? "admin" : normalizedEmail?.includes("manager") ? "manager" : "employee");
-  return (role === "admin" || role === "manager" || role === "employee" ? role : "employee") as "admin" | "manager" | "employee";
+  const role = metadataRole || (normalizedEmail?.includes("admin") ? "admin" : normalizedEmail?.includes("manager") ? "manager" : "pending");
+  return (role === "admin" || role === "manager" || role === "employee" ? role : "pending") as "admin" | "manager" | "employee" | "pending";
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
