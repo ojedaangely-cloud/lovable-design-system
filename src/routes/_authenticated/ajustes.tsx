@@ -94,9 +94,10 @@ function Ajustes() {
     }
   };
 
-  const getRoleLabel = (r: "admin" | "manager" | "employee") => {
+  const getRoleLabel = (r: "admin" | "manager" | "employee" | "pending") => {
     if (r === "admin") return "Administrador";
     if (r === "manager") return "Gerente";
+    if (r === "pending") return "Pendiente de Aprobación";
     return "Empleado";
   };
 

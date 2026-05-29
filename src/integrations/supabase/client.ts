@@ -2,6 +2,11 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+type DatabaseWithSchema = {
+  public: Database["public"];
+  restaurant_borrego: Database["public"];
+};
+
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
@@ -20,7 +25,7 @@ function createSupabaseClient() {
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     db: {
-      schema: "restaurant_borrego"
+      schema: "restaurant_borrego" as "public"
     },
     auth: {
       storage: typeof window !== 'undefined' ? localStorage : undefined,
