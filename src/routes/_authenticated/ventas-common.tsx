@@ -494,7 +494,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
 
       {/* Register Sale Modal Dialog */}
       <Dialog open={showRegisterModal} onOpenChange={setShowRegisterModal}>
-        <DialogContent className="sm:max-w-md rounded-2xl border border-border shadow-2xl p-6 mx-4">
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-6">
           <DialogHeader className="pb-3 border-b border-border/40">
             <DialogTitle className="text-lg font-extrabold text-foreground flex items-center gap-2">
               <Plus className="h-4 w-4 text-primary" /> Registrar Venta
@@ -592,22 +592,20 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
             </div>
           </div>
 
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 border-t border-border/40 pt-4">
-            <div className="flex-1">
-              <UploadReceiptDialog userId={user?.id} restaurantBranch={branchKey} onSaved={() => {
-                setShowRegisterModal(false);
-                load();
-              }} />
-            </div>
-            <div className="flex gap-2 sm:justify-end">
+          <DialogFooter className="flex flex-col gap-3 border-t border-border/40 pt-4 w-full">
+            <UploadReceiptDialog userId={user?.id} restaurantBranch={branchKey} onSaved={() => {
+              setShowRegisterModal(false);
+              load();
+            }} />
+            <div className="flex items-center justify-end gap-2 w-full">
               <Button
                 variant="outline"
-                className="rounded-xl text-xs font-semibold cursor-pointer border-border"
+                className="rounded-xl text-xs font-semibold cursor-pointer border-border flex-1 sm:flex-initial"
                 onClick={() => setShowRegisterModal(false)}
               >
                 Cancelar
               </Button>
-              <Button onClick={add} className="bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs px-5 cursor-pointer">
+              <Button onClick={add} className="bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs px-5 cursor-pointer flex-1 sm:flex-initial">
                 Registrar Venta
               </Button>
             </div>
@@ -617,7 +615,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
 
       {/* Edit Sale Modal Dialog */}
       <Dialog open={!!editingSale} onOpenChange={(open) => !open && setEditingSale(null)}>
-        <DialogContent className="sm:max-w-md rounded-2xl border border-border shadow-2xl p-6 mx-4">
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-6">
           <DialogHeader className="pb-3 border-b border-border/40">
             <DialogTitle className="text-lg font-extrabold text-foreground flex items-center gap-2">
               <Edit2 className="h-4 w-4 text-primary" /> Editar Registro de Venta
@@ -713,16 +711,16 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
             </div>
           </div>
 
-          <DialogFooter className="flex gap-2 sm:justify-end border-t border-border/40 pt-4">
+          <DialogFooter className="flex items-center justify-end gap-2 border-t border-border/40 pt-4 w-full">
             <Button
               variant="outline"
-              className="rounded-xl text-xs font-semibold cursor-pointer border-border"
+              className="rounded-xl text-xs font-semibold cursor-pointer border-border flex-1 sm:flex-initial"
               onClick={() => setEditingSale(null)}
             >
               Cancelar
             </Button>
             <Button
-              className="bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs px-4 cursor-pointer"
+              className="bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs px-4 cursor-pointer flex-1 sm:flex-initial"
               onClick={updateSale}
             >
               Guardar Cambios

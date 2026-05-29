@@ -358,7 +358,7 @@ function Inventario() {
 
       {/* Edit Item Modal */}
       <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
-        <DialogContent className="sm:max-w-md rounded-2xl border border-border shadow-2xl p-6 mx-4">
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-6">
           <DialogHeader className="pb-3 border-b border-border/40">
             <DialogTitle className="text-lg font-extrabold text-foreground flex items-center gap-2">
               <Edit2 className="h-4 w-4 text-primary" /> Editar Artículo de Inventario
@@ -420,16 +420,16 @@ function Inventario() {
               />
             </div>
           </div>
-          <DialogFooter className="flex gap-2 sm:justify-end border-t border-border/40 pt-4">
+          <DialogFooter className="flex items-center justify-end gap-2 border-t border-border/40 pt-4 w-full">
             <Button
               variant="outline"
-              className="rounded-xl text-xs font-semibold cursor-pointer border-border"
+              className="rounded-xl text-xs font-semibold cursor-pointer border-border flex-1 sm:flex-initial"
               onClick={() => setEditingItem(null)}
             >
               Cancelar
             </Button>
             <Button
-              className="bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs px-4 cursor-pointer"
+              className="bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs px-4 cursor-pointer flex-1 sm:flex-initial"
               onClick={updateItem}
             >
               Guardar Cambios

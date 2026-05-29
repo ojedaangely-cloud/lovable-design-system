@@ -48,13 +48,13 @@ const CATEGORIES = [
 ];
 
 const PAYERS = [
-  { value: "rony", label: "Rony" },
-  { value: "kandy", label: "Kandy" },
-  { value: "angel", label: "Angel" },
-  { value: "sarita", label: "Sarita" },
-  { value: "caja_borrego", label: "Caja Borrego" },
-  { value: "caja_cantarito", label: "Caja Cantarito" },
-  { value: "otro", label: "Otro" },
+  { value: "Rony", label: "Rony" },
+  { value: "Kandy", label: "Kandy" },
+  { value: "Angel", label: "Angel" },
+  { value: "Sarita", label: "Sarita" },
+  { value: "Caja Borrego", label: "Caja Borrego" },
+  { value: "Caja Cantarito", label: "Caja Cantarito" },
+  { value: "Otro", label: "Otro" },
 ];
 
 function Gastos() {
@@ -63,7 +63,7 @@ function Gastos() {
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("general");
-  const [paidBy, setPaidBy] = useState("caja_borrego");
+  const [paidBy, setPaidBy] = useState("Caja Borrego");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -231,7 +231,8 @@ function Gastos() {
         if (upErr) throw upErr;
         invoice_url = path;
       }
-      const { error } = await supabase.from("expense_entries").insert({
+      // Step 1: Insert the row (a database trigger may overwrite paid_by on INSERT)
+      const { data: insertedRow, error } = await supabase.from("expense_entries").insert({
         user_id: user.id,
         description: desc,
         amount: Number(amount),
@@ -239,8 +240,15 @@ function Gastos() {
         invoice_url,
         date: date,
         paid_by: paidBy,
-      });
+      }).select("id, paid_by").single();
       if (error) throw error;
+
+      // Step 2: If the trigger changed paid_by, fix it via UPDATE (bypasses the trigger)
+      if (insertedRow && insertedRow.paid_by !== paidBy) {
+        await supabase.from("expense_entries")
+          .update({ paid_by: paidBy })
+          .eq("id", insertedRow.id);
+      }
       setDesc("");
       setAmount("");
       setFile(null);
@@ -274,7 +282,7 @@ function Gastos() {
     setEditAmount(e.amount.toString());
     setEditCategory(e.category);
     setEditDate(e.date);
-    setEditPaidBy(e.paid_by ?? "otro");
+    setEditPaidBy(e.paid_by ?? "Otro");
   };
 
   const updateExpense = async () => {
@@ -615,7 +623,7 @@ function Gastos() {
 
       {/* Register Gasto Modal */}
       <Dialog open={showRegisterModal} onOpenChange={setShowRegisterModal}>
-        <DialogContent className="sm:max-w-md rounded-2xl border border-border shadow-2xl p-6 mx-4">
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-6">
           <DialogHeader className="pb-3 border-b border-border/40">
             <DialogTitle className="text-lg font-extrabold text-foreground flex items-center gap-2">
               <Plus className="h-4 w-4 text-primary" /> Registrar Gasto
@@ -740,10 +748,10 @@ function Gastos() {
             </div>
           </div>
 
-          <DialogFooter className="flex gap-2 sm:justify-end border-t border-border/40 pt-4">
+          <DialogFooter className="flex items-center justify-end gap-2 border-t border-border/40 pt-4 w-full">
             <Button
               variant="outline"
-              className="rounded-xl text-xs font-semibold cursor-pointer border-border"
+              className="rounded-xl text-xs font-semibold cursor-pointer border-border flex-1 sm:flex-initial"
               onClick={() => setShowRegisterModal(false)}
             >
               Cancelar
@@ -751,7 +759,7 @@ function Gastos() {
             <Button
               onClick={add}
               disabled={uploading || isAnalyzing}
-              className="bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs px-5 cursor-pointer"
+              className="bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs px-5 cursor-pointer flex-1 sm:flex-initial"
             >
               <Plus className="h-4 w-4 mr-1.5" />
               {uploading ? "Subiendo Factura..." : "Registrar Gasto"}
@@ -762,7 +770,7 @@ function Gastos() {
 
       {/* Edit Modal Dialog */}
       <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
-        <DialogContent className="sm:max-w-md rounded-2xl border border-border shadow-2xl p-6 mx-4">
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-6">
           <DialogHeader className="pb-3 border-b border-border/40">
             <DialogTitle className="text-lg font-extrabold text-foreground flex items-center gap-2">
               <Edit2 className="h-4 w-4 text-primary" /> Editar Registro de Gasto
@@ -829,16 +837,16 @@ function Gastos() {
               />
             </div>
           </div>
-          <DialogFooter className="flex gap-2 sm:justify-end border-t border-border/40 pt-4">
+          <DialogFooter className="flex items-center justify-end gap-2 border-t border-border/40 pt-4 w-full">
             <Button
               variant="outline"
-              className="rounded-xl text-xs font-semibold cursor-pointer border-border"
+              className="rounded-xl text-xs font-semibold cursor-pointer border-border flex-1 sm:flex-initial"
               onClick={() => setEditingExpense(null)}
             >
               Cancelar
             </Button>
             <Button
-              className="bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs px-4 cursor-pointer"
+              className="bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs px-4 cursor-pointer flex-1 sm:flex-initial"
               onClick={updateExpense}
             >
               Guardar Cambios
