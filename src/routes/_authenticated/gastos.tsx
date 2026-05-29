@@ -507,26 +507,39 @@ function Gastos() {
                   </Select>
                 </div>
 
-                {/* Active Filter Badges */}
+                {/* Active Filter Badges & Totals */}
                 {(filterPayer !== "all" || filterCategory !== "all") && (
-                  <div className="flex items-end gap-2 flex-wrap">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full mt-2 bg-accent/20 border border-border/50 rounded-xl p-3 gap-3 animate-fade-in">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mr-1">Filtros Activos:</span>
+                      {filterPayer !== "all" && (
+                        <button
+                          onClick={() => setFilterPayer("all")}
+                          className="flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-1 text-[10px] font-bold cursor-pointer hover:bg-primary/20 transition-colors"
+                        >
+                          {getPayerLabel(filterPayer)}
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      )}
+                      {filterCategory !== "all" && (
+                        <button
+                          onClick={() => setFilterCategory("all")}
+                          className="flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-1 text-[10px] font-bold cursor-pointer hover:bg-primary/20 transition-colors"
+                        >
+                          {getCategoryLabel(filterCategory)}
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      )}
+                    </div>
                     {filterPayer !== "all" && (
-                      <button
-                        onClick={() => setFilterPayer("all")}
-                        className="flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-1 text-[10px] font-bold cursor-pointer hover:bg-primary/20 transition-colors"
-                      >
-                        {getPayerLabel(filterPayer)}
-                        <X className="h-2.5 w-2.5" />
-                      </button>
-                    )}
-                    {filterCategory !== "all" && (
-                      <button
-                        onClick={() => setFilterCategory("all")}
-                        className="flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-1 text-[10px] font-bold cursor-pointer hover:bg-primary/20 transition-colors"
-                      >
-                        {getCategoryLabel(filterCategory)}
-                        <X className="h-2.5 w-2.5" />
-                      </button>
+                      <div className="flex items-center gap-3 sm:justify-end bg-background border border-border/60 px-4 py-1.5 rounded-lg shadow-sm">
+                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                          Total {getPayerLabel(filterPayer)}:
+                        </span>
+                        <span className="text-lg font-black text-primary">
+                          ${periodTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     )}
                   </div>
                 )}
