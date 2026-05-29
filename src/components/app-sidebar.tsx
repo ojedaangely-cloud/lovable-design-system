@@ -24,7 +24,6 @@ const menuItems = [
 
 const generalItems = [
   { title: "Ajustes", url: "/ajustes", icon: Settings },
-  { title: "Ayuda", url: "#", icon: HelpCircle },
 ];
 
 export function AppSidebar() {
@@ -147,30 +146,7 @@ export function AppSidebar() {
           </SidebarGroup>
         </div>
 
-        {/* Promo Card matching Donezo bottom app banner */}
-        <div className="px-4 py-3 mt-auto group-data-[collapsible=icon]:hidden">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/95 to-black p-4 text-primary-foreground shadow-lg border border-primary/20">
-            {/* Background elements */}
-            <div className="absolute -right-6 -bottom-6 h-24 w-24 rounded-full bg-white/5 blur-xl pointer-events-none" />
-            <div className="absolute -left-6 -top-6 h-24 w-24 rounded-full bg-primary/25 blur-xl pointer-events-none" />
-            
-            <div className="relative space-y-3 z-10">
-              <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 backdrop-blur-md">
-                <Gift className="h-4.5 w-4.5 text-white" />
-              </div>
-              <div>
-                <h4 className="font-bold text-sm tracking-tight text-white leading-tight">El Borrego App</h4>
-                <p className="text-[11px] text-white/80 mt-1 leading-normal">
-                  Descarga nuestra app móvil para gestionar pedidos en mesa de forma rápida.
-                </p>
-              </div>
-              <button className="flex items-center gap-1.5 text-[11px] font-bold bg-white text-black hover:bg-white/95 px-3 py-1.5 rounded-lg shadow-sm transition-all duration-300 w-full justify-center">
-                <span>Obtener App</span>
-                <ArrowRight className="h-3 w-3" />
-              </button>
-            </div>
-          </div>
-        </div>
+
       </SidebarContent>
     </Sidebar>
   );
