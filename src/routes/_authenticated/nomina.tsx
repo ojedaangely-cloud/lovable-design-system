@@ -162,12 +162,53 @@ function Nomina() {
     if (empData) {
       setEmployees(empData as Employee[]);
 
-      // Auto-select employee for logged in user if linked
-      const linkedEmp = empData.find(e => e.linked_user_id === user.id);
-      if (linkedEmp && !selectedEmployeeId) {
+      // 1. First check: Is there a record already linked to the logged-in user?
+      let linkedEmp = empData.find(e => e.linked_user_id === user.id);
+      
+      // 2. Second check: If not linked, but the user is an employee, try to auto-link by matching the full name
+      if (!linkedEmp && isEmployee) {
+        const userFullName = user.user_metadata?.full_name || "";
+        const emailName = user.email ? user.email.split("@")[0] : "";
+        
+        const normalize = (s: string) => 
+          s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        
+        const normUser = normalize(userFullName);
+        const normEmail = normalize(emailName);
+        
+        linkedEmp = empData.find(e => {
+          const normEmp = normalize(e.name);
+          // Match if exact match or if userFullName/email name matches/contains employee name
+          if (normUser.length > 2 && (normEmp === normUser || normEmp.includes(normUser) || normUser.includes(normEmp))) {
+            return true;
+          }
+          if (normEmail.length > 2 && (normEmp.includes(normEmail) || normEmail.includes(normEmp))) {
+            return true;
+          }
+          return false;
+        });
+
+        if (linkedEmp) {
+          // Permanently link this user.id to the employee profile in Supabase
+          supabase
+            .from("employees")
+            .update({ linked_user_id: user.id })
+            .eq("id", linkedEmp.id)
+            .then(({ error }) => {
+              if (!error) {
+                toast.success(`Vinculación automática: Tu usuario ha sido enlazado a ${linkedEmp?.name}`);
+              }
+            });
+        }
+      }
+
+      // 3. Selection hierarchy
+      if (linkedEmp) {
         setSelectedEmployeeId(linkedEmp.id);
+        localStorage.setItem(`borrego_employee_id_${user.id}`, linkedEmp.id);
       } else if (!selectedEmployeeId && isEmployee) {
-        const savedEmp = localStorage.getItem("borrego_employee_id");
+        // Fallback to user-isolated localStorage key
+        const savedEmp = localStorage.getItem(`borrego_employee_id_${user.id}`);
         if (savedEmp && empData.find(e => e.id === savedEmp)) {
           setSelectedEmployeeId(savedEmp);
         }
@@ -371,9 +412,24 @@ function Nomina() {
     loadData();
   };
 
-  const handleSelectEmployee = (id: string) => {
+  const handleSelectEmployee = async (id: string) => {
     setSelectedEmployeeId(id);
-    localStorage.setItem("borrego_employee_id", id);
+    localStorage.setItem(`borrego_employee_id_${user?.id}`, id);
+    
+    // Automatically link in Supabase if not linked already!
+    if (user) {
+      const selectedEmp = employees.find(e => e.id === id);
+      if (selectedEmp && !selectedEmp.linked_user_id) {
+        const { error } = await supabase
+          .from("employees")
+          .update({ linked_user_id: user.id })
+          .eq("id", id);
+        if (!error) {
+          toast.success(`Tu cuenta de usuario ha sido vinculada a ${selectedEmp.name}`);
+          loadData();
+        }
+      }
+    }
   };
 
   // Liquidation process (Admin only)
@@ -703,7 +759,15 @@ function Nomina() {
                   </Button>
 
                   <div className="w-full flex justify-end">
-                    <Button variant="link" size="sm" className="text-xs text-muted-foreground" onClick={() => setSelectedEmployeeId("")}>
+                    <Button 
+                      variant="link" 
+                      size="sm" 
+                      className="text-xs text-muted-foreground" 
+                      onClick={() => {
+                        setSelectedEmployeeId("");
+                        localStorage.removeItem(`borrego_employee_id_${user?.id}`);
+                      }}
+                    >
                       ¿No eres {selectedEmployeeData?.name}?
                     </Button>
                   </div>
