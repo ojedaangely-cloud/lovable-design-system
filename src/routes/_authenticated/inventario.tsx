@@ -358,8 +358,8 @@ function Inventario() {
 
       {/* Edit Item Modal */}
       <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
-        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-6">
-          <DialogHeader className="pb-3 border-b border-border/40">
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border/40">
             <DialogTitle className="text-lg font-extrabold text-foreground flex items-center gap-2">
               <Edit2 className="h-4 w-4 text-primary" /> Editar Artículo de Inventario
             </DialogTitle>
@@ -367,13 +367,13 @@ function Inventario() {
               Modifica las propiedades del producto y presiona guardar.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 px-6 py-4 min-w-0">
             <div className="space-y-1">
               <Label htmlFor="editName">Nombre del Producto</Label>
               <Input
                 id="editName"
                 value={editName}
-                className="rounded-xl border-border/80 text-sm"
+                className="rounded-xl border-border/80 text-sm w-full"
                 onChange={(e) => setEditName(e.target.value)}
               />
             </div>
@@ -382,7 +382,7 @@ function Inventario() {
               <Input
                 id="editUnit"
                 value={editUnit}
-                className="rounded-xl border-border/80 text-sm"
+                className="rounded-xl border-border/80 text-sm w-full"
                 onChange={(e) => setEditUnit(e.target.value)}
               />
             </div>
@@ -393,7 +393,7 @@ function Inventario() {
                 type="number"
                 step="0.01"
                 value={editStock}
-                className="rounded-xl border-border/80 text-sm"
+                className="rounded-xl border-border/80 text-sm w-full"
                 onChange={(e) => setEditStock(e.target.value)}
               />
             </div>
@@ -404,7 +404,7 @@ function Inventario() {
                 type="number"
                 step="0.01"
                 value={editMinStock}
-                className="rounded-xl border-border/80 text-sm"
+                className="rounded-xl border-border/80 text-sm w-full"
                 onChange={(e) => setEditMinStock(e.target.value)}
               />
             </div>
@@ -415,12 +415,12 @@ function Inventario() {
                 type="number"
                 step="0.01"
                 value={editCost}
-                className="rounded-xl border-border/80 text-sm"
+                className="rounded-xl border-border/80 text-sm w-full"
                 onChange={(e) => setEditCost(e.target.value)}
               />
             </div>
           </div>
-          <DialogFooter className="flex items-center justify-end gap-2 border-t border-border/40 pt-4 w-full">
+          <DialogFooter className="flex items-center justify-end gap-2 border-t border-border/40 px-6 py-4 w-full min-w-0">
             <Button
               variant="outline"
               className="rounded-xl text-xs font-semibold cursor-pointer border-border flex-1 sm:flex-initial"

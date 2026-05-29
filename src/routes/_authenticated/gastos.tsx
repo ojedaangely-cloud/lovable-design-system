@@ -623,8 +623,8 @@ function Gastos() {
 
       {/* Register Gasto Modal */}
       <Dialog open={showRegisterModal} onOpenChange={setShowRegisterModal}>
-        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-6">
-          <DialogHeader className="pb-3 border-b border-border/40">
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border/40">
             <DialogTitle className="text-lg font-extrabold text-foreground flex items-center gap-2">
               <Plus className="h-4 w-4 text-primary" /> Registrar Gasto
               <Sparkles className="h-4 w-4 text-primary animate-pulse ml-auto" />
@@ -634,7 +634,7 @@ function Gastos() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 px-6 py-4 min-w-0">
             {/* File / Ticket */}
             <div className="space-y-1.5">
               <Label htmlFor="fileInput" className="flex items-center justify-between">
@@ -648,7 +648,7 @@ function Gastos() {
                 ref={fileRef}
                 type="file"
                 accept="image/*,application/pdf"
-                className="rounded-xl border-border/80 text-xs shadow-sm file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                className="rounded-xl border-border/80 text-xs shadow-sm file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer w-full"
                 onChange={handleFileChange}
               />
             </div>
@@ -657,11 +657,11 @@ function Gastos() {
             {isAnalyzing && (
               <div className="p-3 bg-primary/10 border border-primary/20 rounded-2xl animate-pulse flex items-center gap-3">
                 <div className="h-2.5 w-2.5 rounded-full bg-primary animate-ping shrink-0" />
-                <div className="flex-1 space-y-1">
+                <div className="flex-1 space-y-1 min-w-0">
                   <p className="text-[10px] font-bold text-primary flex items-center gap-1">
                     <Sparkles className="h-3.5 w-3.5 fill-primary shrink-0" /> Lector de Facturas IA
                   </p>
-                  <p className="text-[9px] text-muted-foreground leading-normal">
+                  <p className="text-[9px] text-muted-foreground leading-normal truncate">
                     Analizando texto, montos y categorías del comprobante...
                   </p>
                 </div>
@@ -686,7 +686,7 @@ function Gastos() {
                 id="dateInput"
                 type="date"
                 value={date}
-                className="rounded-xl border-border/80 text-sm"
+                className="rounded-xl border-border/80 text-sm w-full"
                 onChange={(e) => setDate(e.target.value)}
               />
             </div>
@@ -698,7 +698,7 @@ function Gastos() {
                 id="descInput"
                 placeholder="Ej. Compra de verdura"
                 value={desc}
-                className="rounded-xl border-border/80 text-sm"
+                className="rounded-xl border-border/80 text-sm w-full"
                 onChange={(e) => setDesc(e.target.value)}
               />
             </div>
@@ -712,7 +712,7 @@ function Gastos() {
                 step="0.01"
                 placeholder="0.00"
                 value={amount}
-                className="rounded-xl border-border/80 text-sm"
+                className="rounded-xl border-border/80 text-sm w-full"
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
@@ -721,7 +721,7 @@ function Gastos() {
             <div className="space-y-1.5">
               <Label htmlFor="categoryInput">Categoría</Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger id="categoryInput" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40">
+                <SelectTrigger id="categoryInput" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40 w-full">
                   <SelectValue placeholder="Seleccionar categoría" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto" side="bottom" align="start">
@@ -736,7 +736,7 @@ function Gastos() {
             <div className="space-y-1.5">
               <Label htmlFor="paidByInput">Pagador</Label>
               <Select value={paidBy} onValueChange={setPaidBy}>
-                <SelectTrigger id="paidByInput" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40">
+                <SelectTrigger id="paidByInput" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40 w-full">
                   <SelectValue placeholder="Seleccionar pagador" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto" side="bottom" align="start">
@@ -748,7 +748,7 @@ function Gastos() {
             </div>
           </div>
 
-          <DialogFooter className="flex items-center justify-end gap-2 border-t border-border/40 pt-4 w-full">
+          <DialogFooter className="flex items-center justify-end gap-2 border-t border-border/40 px-6 py-4 w-full min-w-0">
             <Button
               variant="outline"
               className="rounded-xl text-xs font-semibold cursor-pointer border-border flex-1 sm:flex-initial"
@@ -770,8 +770,8 @@ function Gastos() {
 
       {/* Edit Modal Dialog */}
       <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
-        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-6">
-          <DialogHeader className="pb-3 border-b border-border/40">
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border/40">
             <DialogTitle className="text-lg font-extrabold text-foreground flex items-center gap-2">
               <Edit2 className="h-4 w-4 text-primary" /> Editar Registro de Gasto
             </DialogTitle>
@@ -779,21 +779,21 @@ function Gastos() {
               Modifica los campos necesarios para actualizar este gasto.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 px-6 py-4 min-w-0">
             <div className="space-y-1">
               <Label htmlFor="editDate">Fecha</Label>
               <Input
                 id="editDate"
                 type="date"
                 value={editDate}
-                className="rounded-xl border-border/80"
+                className="rounded-xl border-border/80 w-full"
                 onChange={(e) => setEditDate(e.target.value)}
               />
             </div>
             <div className="space-y-1">
               <Label htmlFor="editCategory">Categoría</Label>
               <Select value={editCategory} onValueChange={setEditCategory}>
-                <SelectTrigger id="editCategory" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40">
+                <SelectTrigger id="editCategory" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40 w-full">
                   <SelectValue placeholder="Seleccionar categoría" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto" side="bottom" align="start">
@@ -806,7 +806,7 @@ function Gastos() {
             <div className="space-y-1">
               <Label htmlFor="editPaidBy">Pagador</Label>
               <Select value={editPaidBy} onValueChange={setEditPaidBy}>
-                <SelectTrigger id="editPaidBy" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40">
+                <SelectTrigger id="editPaidBy" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40 w-full">
                   <SelectValue placeholder="Seleccionar pagador" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto" side="bottom" align="start">
@@ -821,7 +821,7 @@ function Gastos() {
               <Input
                 id="editDesc"
                 value={editDesc}
-                className="rounded-xl border-border/80"
+                className="rounded-xl border-border/80 w-full"
                 onChange={(e) => setEditDesc(e.target.value)}
               />
             </div>
@@ -832,12 +832,12 @@ function Gastos() {
                 type="number"
                 step="0.01"
                 value={editAmount}
-                className="rounded-xl border-border/80"
+                className="rounded-xl border-border/80 w-full"
                 onChange={(e) => setEditAmount(e.target.value)}
               />
             </div>
           </div>
-          <DialogFooter className="flex items-center justify-end gap-2 border-t border-border/40 pt-4 w-full">
+          <DialogFooter className="flex items-center justify-end gap-2 border-t border-border/40 px-6 py-4 w-full min-w-0">
             <Button
               variant="outline"
               className="rounded-xl text-xs font-semibold cursor-pointer border-border flex-1 sm:flex-initial"

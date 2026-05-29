@@ -1437,18 +1437,19 @@ function Nomina() {
 
       {/* EDIT EMPLOYEE DIALOG */}
       <Dialog open={!!editingEmployee} onOpenChange={(open) => !open && setEditingEmployee(null)}>
-        <DialogContent className="max-w-md rounded-2xl bg-card border border-border/80">
-          <DialogHeader>
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl bg-card border border-border/80 p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border/40">
             <DialogTitle>Editar Empleado</DialogTitle>
             <DialogDescription>Modifica los datos del personal seleccionado.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleUpdateEmployee} className="space-y-4 mt-2">
+          <form onSubmit={handleUpdateEmployee} className="space-y-4 px-6 py-4 min-w-0">
             <div className="space-y-1.5">
               <Label htmlFor="editEmpName">Nombre y Apellido</Label>
               <Input
                 id="editEmpName"
                 required
                 value={editEmpName}
+                className="w-full rounded-xl"
                 onChange={(e) => setEditEmpName(e.target.value)}
               />
             </div>
@@ -1476,6 +1477,7 @@ function Nomina() {
                 type="number"
                 step="0.01"
                 value={editEmpRate}
+                className="w-full rounded-xl"
                 onChange={(e) => setEditEmpRate(e.target.value)}
               />
             </div>
@@ -1486,14 +1488,15 @@ function Nomina() {
               <Input
                 id="editEmpLinkedUser"
                 value={editEmpLinkedUser}
+                className="w-full rounded-xl"
                 onChange={(e) => setEditEmpLinkedUser(e.target.value)}
               />
             </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" className="rounded-xl" onClick={() => setEditingEmployee(null)}>
+            <DialogFooter className="gap-2 sm:gap-0 pt-4 w-full">
+              <Button type="button" variant="outline" className="rounded-xl flex-1 sm:flex-initial" onClick={() => setEditingEmployee(null)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-primary hover:bg-primary/95 text-white font-bold rounded-xl shadow-md">
+              <Button type="submit" className="bg-primary hover:bg-primary/95 text-white font-bold rounded-xl shadow-md flex-1 sm:flex-initial">
                 Guardar Cambios
               </Button>
             </DialogFooter>
@@ -1503,12 +1506,12 @@ function Nomina() {
 
       {/* EDIT PAYROLL DIALOG */}
       <Dialog open={!!editingPayroll} onOpenChange={(open) => !open && setEditingPayroll(null)}>
-        <DialogContent className="max-w-md rounded-2xl bg-card border border-border/80">
-          <DialogHeader>
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl bg-card border border-border/80 p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border/40">
             <DialogTitle>Editar Registro de Pago</DialogTitle>
             <DialogDescription>Modifica los detalles de horas o tarifa.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleUpdatePayroll} className="space-y-4 mt-2">
+          <form onSubmit={handleUpdatePayroll} className="space-y-4 px-6 py-4 min-w-0">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1.5">
                 <Label htmlFor="editPayHours">Horas Trab.</Label>
@@ -1518,6 +1521,7 @@ function Nomina() {
                   type="number"
                   step="0.1"
                   value={editPayHours}
+                  className="w-full rounded-xl"
                   onChange={(e) => setEditPayHours(e.target.value)}
                 />
               </div>
@@ -1529,6 +1533,7 @@ function Nomina() {
                   type="number"
                   step="0.01"
                   value={editPayRate}
+                  className="w-full rounded-xl"
                   onChange={(e) => setEditPayRate(e.target.value)}
                 />
               </div>
@@ -1546,14 +1551,15 @@ function Nomina() {
               <Input
                 id="editPayNotes"
                 value={editPayNotes}
+                className="w-full rounded-xl"
                 onChange={(e) => setEditPayNotes(e.target.value)}
               />
             </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" className="rounded-xl" onClick={() => setEditingPayroll(null)}>
+            <DialogFooter className="gap-2 sm:gap-0 pt-4 w-full">
+              <Button type="button" variant="outline" className="rounded-xl flex-1 sm:flex-initial" onClick={() => setEditingPayroll(null)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-600/95 text-white font-bold rounded-xl shadow-md">
+              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-600/95 text-white font-bold rounded-xl shadow-md flex-1 sm:flex-initial">
                 Guardar Cambios
               </Button>
             </DialogFooter>

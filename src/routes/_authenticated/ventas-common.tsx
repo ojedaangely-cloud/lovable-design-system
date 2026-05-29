@@ -494,8 +494,8 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
 
       {/* Register Sale Modal Dialog */}
       <Dialog open={showRegisterModal} onOpenChange={setShowRegisterModal}>
-        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-6">
-          <DialogHeader className="pb-3 border-b border-border/40">
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border/40">
             <DialogTitle className="text-lg font-extrabold text-foreground flex items-center gap-2">
               <Plus className="h-4 w-4 text-primary" /> Registrar Venta
             </DialogTitle>
@@ -504,7 +504,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 px-6 py-4 min-w-0">
             {/* Date */}
             <div className="space-y-1.5">
               <Label htmlFor="dateInput">Fecha</Label>
@@ -512,7 +512,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
                 id="dateInput"
                 type="date"
                 value={date}
-                className="rounded-xl border-border/80 text-sm"
+                className="rounded-xl border-border/80 text-sm w-full"
                 onChange={(e) => setDate(e.target.value)}
               />
             </div>
@@ -532,7 +532,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
                   }
                 }}
               >
-                <SelectTrigger id="typeInput" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40">
+                <SelectTrigger id="typeInput" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40 w-full">
                   <SelectValue placeholder="Seleccionar tipo" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto" side="bottom" align="start">
@@ -552,7 +552,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
                   id="customDescInput"
                   placeholder="Ej. Tacos de Barbacoa"
                   value={customDesc}
-                  className="rounded-xl border-border/80 text-sm"
+                  className="rounded-xl border-border/80 text-sm w-full"
                   onChange={(e) => {
                     setCustomDesc(e.target.value);
                     setDesc(e.target.value);
@@ -570,7 +570,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
                 step="0.01"
                 placeholder="0.00"
                 value={amount}
-                className="rounded-xl border-border/80 text-sm"
+                className="rounded-xl border-border/80 text-sm w-full"
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
@@ -579,7 +579,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
             <div className="space-y-1.5">
               <Label htmlFor="methodInput">Método de Pago</Label>
               <Select value={method} onValueChange={setMethod}>
-                <SelectTrigger id="methodInput" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40">
+                <SelectTrigger id="methodInput" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40 w-full">
                   <SelectValue placeholder="Seleccionar método" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto" side="bottom" align="start">
@@ -592,7 +592,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
             </div>
           </div>
 
-          <DialogFooter className="flex flex-col gap-3 border-t border-border/40 pt-4 w-full">
+          <DialogFooter className="flex flex-col gap-3 border-t border-border/40 px-6 py-4 w-full min-w-0">
             <UploadReceiptDialog userId={user?.id} restaurantBranch={branchKey} onSaved={() => {
               setShowRegisterModal(false);
               load();
@@ -615,8 +615,8 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
 
       {/* Edit Sale Modal Dialog */}
       <Dialog open={!!editingSale} onOpenChange={(open) => !open && setEditingSale(null)}>
-        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-6">
-          <DialogHeader className="pb-3 border-b border-border/40">
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl border border-border shadow-2xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border/40">
             <DialogTitle className="text-lg font-extrabold text-foreground flex items-center gap-2">
               <Edit2 className="h-4 w-4 text-primary" /> Editar Registro de Venta
             </DialogTitle>
@@ -625,7 +625,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 px-6 py-4 min-w-0">
             {/* Date */}
             <div className="space-y-1">
               <Label htmlFor="editDate">Fecha</Label>
@@ -633,7 +633,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
                 id="editDate"
                 type="date"
                 value={editDate}
-                className="rounded-xl border-border/80"
+                className="rounded-xl border-border/80 w-full"
                 onChange={(e) => setEditDate(e.target.value)}
               />
             </div>
@@ -653,7 +653,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
                   }
                 }}
               >
-                <SelectTrigger id="editTypeInput" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40">
+                <SelectTrigger id="editTypeInput" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40 w-full">
                   <SelectValue placeholder="Seleccionar tipo" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto" side="bottom" align="start">
@@ -672,7 +672,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
                 <Input
                   id="editCustomDescInput"
                   value={editCustomDesc}
-                  className="rounded-xl border-border/80 text-sm"
+                  className="rounded-xl border-border/80 text-sm w-full"
                   onChange={(e) => {
                     setEditCustomDesc(e.target.value);
                     setEditDesc(e.target.value);
@@ -689,7 +689,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
                 type="number"
                 step="0.01"
                 value={editAmount}
-                className="rounded-xl border-border/80"
+                className="rounded-xl border-border/80 w-full"
                 onChange={(e) => setEditAmount(e.target.value)}
               />
             </div>
@@ -698,7 +698,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
             <div className="space-y-1.5">
               <Label htmlFor="editMethodInput">Método de Pago</Label>
               <Select value={editMethod} onValueChange={setEditMethod}>
-                <SelectTrigger id="editMethodInput" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40">
+                <SelectTrigger id="editMethodInput" className="h-10 rounded-xl border-border/80 text-sm bg-background focus:ring-2 focus:ring-primary/40 w-full">
                   <SelectValue placeholder="Seleccionar método" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto" side="bottom" align="start">
@@ -711,7 +711,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
             </div>
           </div>
 
-          <DialogFooter className="flex items-center justify-end gap-2 border-t border-border/40 pt-4 w-full">
+          <DialogFooter className="flex items-center justify-end gap-2 border-t border-border/40 px-6 py-4 w-full min-w-0">
             <Button
               variant="outline"
               className="rounded-xl text-xs font-semibold cursor-pointer border-border flex-1 sm:flex-initial"
