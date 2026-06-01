@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { restaurantDb } from "@/integrations/supabase/restaurant-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -89,19 +89,17 @@ function Dashboard() {
     setLoading(true);
     (async () => {
       const [s, e, i] = await Promise.all([
-        supabase
-          .schema("restaurant_borrego")
+        restaurantDb
           .from("sales_entries")
           .select("amount,date,description,payment_method,restaurant_branch")
           .gte("date", fromStr)
           .lte("date", toStr),
-        supabase
-          .schema("restaurant_borrego")
+        restaurantDb
           .from("expense_entries")
           .select("amount,date,description,category")
           .gte("date", fromStr)
           .lte("date", toStr),
-        supabase.schema("restaurant_borrego").from("inventory_items").select("name,stock,min_stock,unit"),
+        restaurantDb.from("inventory_items").select("name,stock,min_stock,unit"),
       ]);
       setSales((s.data ?? []) as Sale[]);
       setExpenses((e.data ?? []) as Expense[]);
@@ -121,24 +119,20 @@ function Dashboard() {
 
   const totalExpenses = expenses.reduce((a, b) => a + Number(b.amount || 0), 0);
 
-  // Tips / Propina: Sum of sales with "propina" or "tip" in description
   const tipsPropina = sales
     .filter((s) => s.description?.toLowerCase().includes("propina") || s.description?.toLowerCase().includes("tip"))
     .reduce((a, b) => a + Number(b.amount || 0), 0);
 
-  // Ganancia Neta = suma de las dos empresas - Gastos totales - Tips Propina
   const profit = totalSales - totalExpenses - tipsPropina;
   const margin = totalSales > 0 ? (profit / totalSales) * 100 : 0;
   const lowStock = inventory.filter((x) => Number(x.stock) <= Number(x.min_stock));
 
-  // Chart data: daily sales within the selected range
   const chartData = useMemo(() => {
     const data: { name: string; date: string; value: number }[] = [];
     const start = new Date(dateFrom);
     const end = new Date(dateTo);
     const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    
-    // For ranges <= 31 days, show daily bars
+
     if (diffDays <= 31) {
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         const iso = format(d, "yyyy-MM-dd");
@@ -149,7 +143,6 @@ function Dashboard() {
         });
       }
     } else {
-      // For larger ranges, group by month
       const months = new Map<string, { name: string; date: string; value: number }>();
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         const monthKey = format(d, "yyyy-MM");
@@ -179,7 +172,6 @@ function Dashboard() {
 
   const chartHasData = chartData.some((d) => d.value > 0);
 
-  // Today sales (within range)
   const todayIso = format(new Date(), "yyyy-MM-dd");
   const todayInRange = todayIso >= fromStr && todayIso <= toStr;
   const todaySalesBorrego = todayInRange
@@ -190,7 +182,6 @@ function Dashboard() {
     : 0;
   const todaySales = todaySalesBorrego + todaySalesCantarito;
 
-  // Month prefix for contextual info
   const monthPrefix = format(new Date(), "yyyy-MM");
   const currentMonthInRange = fromStr <= monthPrefix + "-31" && toStr >= monthPrefix + "-01";
 
@@ -212,7 +203,6 @@ function Dashboard() {
         .reduce((a, b) => a + Number(b.amount || 0), 0)
     : 0;
 
-  // Payment method breakdown (filtered by range)
   const byMethod = sales.reduce<Record<string, number>>((acc, s) => {
     const k = s.payment_method || "otro";
     acc[k] = (acc[k] || 0) + Number(s.amount || 0);
@@ -220,12 +210,10 @@ function Dashboard() {
   }, {});
   const methodEntries = Object.entries(byMethod).sort((a, b) => b[1] - a[1]);
 
-  // Recent sales (filtered by range, already)
   const recentSales = [...sales]
     .sort((a, b) => (a.date < b.date ? 1 : -1))
     .slice(0, 5);
 
-  // Recent expenses (filtered by range, already)
   const recentExpenses = [...expenses]
     .sort((a, b) => (a.date < b.date ? 1 : -1))
     .slice(0, 5);
@@ -324,9 +312,8 @@ function Dashboard() {
         )}
       </div>
 
-      {/* KPI Cards - all real */}
+      {/* KPI Cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {/* Ventas Borrego */}
         <Card className="bg-card border border-border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -342,7 +329,6 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Ventas Cantarito */}
         <Card className="bg-card border border-border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -358,7 +344,6 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Ventas Totales */}
         <Card className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-black text-white border-none shadow-xl sm:col-span-2 lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-white/80">
@@ -374,7 +359,6 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Gastos Totales */}
         <Card className="bg-card border border-border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -390,7 +374,6 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Tips / Propina */}
         <Card className="bg-card border border-border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -406,7 +389,6 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Ganancia Neta */}
         <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 shadow-md relative overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
@@ -424,7 +406,6 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Stock Bajo */}
         <Card className="bg-card border border-border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -448,7 +429,6 @@ function Dashboard() {
       {/* Main grid */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          {/* Sales Chart */}
           <Card className="border border-border/60 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div>
@@ -502,7 +482,6 @@ function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Sales distribution gauge */}
           <Card className="border border-border/60 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div>
@@ -517,24 +496,18 @@ function Dashboard() {
             </CardHeader>
             <CardContent className="pt-4">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-8 py-2">
-                {/* Left: Gauge */}
                 <div className="relative w-[220px] h-[130px] flex items-center justify-center">
                   <svg viewBox="0 0 200 160" className="w-full h-full overflow-visible">
                     <defs>
-                      {/* Red gradient for progress */}
                       <linearGradient id="redGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                         <stop offset="0%" stopColor="#f43f5e" />
                         <stop offset="50%" stopColor="#e11d48" />
                         <stop offset="100%" stopColor="#9f1239" />
                       </linearGradient>
-
-                      {/* Pattern for unfilled/striped part */}
                       <pattern id="stripes" width="10" height="10" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
                         <line x1="0" y1="0" x2="0" y2="10" stroke="currentColor" className="text-muted/40" strokeWidth="3" />
                       </pattern>
                     </defs>
-
-                    {/* Base track background to give a soft base color to stripes */}
                     <path
                       d="M 30.72 140 A 80 80 0 1 1 169.28 140"
                       fill="none"
@@ -543,8 +516,6 @@ function Dashboard() {
                       strokeWidth="18"
                       strokeLinecap="round"
                     />
-
-                    {/* Background track (striped) */}
                     <path
                       d="M 30.72 140 A 80 80 0 1 1 169.28 140"
                       fill="none"
@@ -552,8 +523,6 @@ function Dashboard() {
                       strokeWidth="18"
                       strokeLinecap="round"
                     />
-
-                    {/* Progress track (red gradient) */}
                     {totalSales > 0 && (
                       <path
                         d="M 30.72 140 A 80 80 0 1 1 169.28 140"
@@ -567,8 +536,6 @@ function Dashboard() {
                       />
                     )}
                   </svg>
-
-                  {/* Center Text inside gauge */}
                   <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center justify-center text-center">
                     <span className="text-3xl font-black tracking-tight text-foreground">
                       {totalSales > 0 ? `${pctBorrego.toFixed(0)}%` : "0%"}
@@ -578,10 +545,7 @@ function Dashboard() {
                     </span>
                   </div>
                 </div>
-
-                {/* Right: Detailed breakdown */}
                 <div className="flex-1 w-full space-y-3">
-                  {/* El Borrego */}
                   <div className="p-3 rounded-xl border border-border bg-card shadow-sm hover:border-red-500/20 transition-all">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
@@ -597,8 +561,6 @@ function Dashboard() {
                       </span>
                     </div>
                   </div>
-
-                  {/* Cantarito Taqueria */}
                   <div className="p-3 rounded-xl border border-border bg-card shadow-sm hover:border-border/80 transition-all">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
@@ -614,8 +576,6 @@ function Dashboard() {
                       </span>
                     </div>
                   </div>
-
-                  {/* Insight message */}
                   <p className="text-[11px] text-muted-foreground flex items-start gap-1.5 bg-accent/25 p-2 rounded-lg border border-accent/10">
                     <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
                     <span>
@@ -632,7 +592,6 @@ function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Recent sales - real */}
           <Card className="border border-border/60 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-bold">Ventas recientes</CardTitle>
@@ -670,7 +629,6 @@ function Dashboard() {
         </div>
 
         <div className="space-y-6">
-          {/* Payment methods - real */}
           <Card className="border border-border/60 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-bold">Métodos de pago</CardTitle>
@@ -710,7 +668,6 @@ function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Low stock - real */}
           <Card className="border border-border/60 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-bold">Inventario bajo</CardTitle>
@@ -750,7 +707,6 @@ function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Recent expenses - real */}
           <Card className="border border-border/60 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-bold">Gastos recientes</CardTitle>
