@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { restaurantDb } from "@/integrations/supabase/restaurant-client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,7 +98,7 @@ function Gastos() {
   const isEmployee = role === "employee";
 
   const load = async () => {
-    const { data } = await supabase.from("expense_entries").select("*").order("date", { ascending: false }).limit(200);
+    const { data } = await restaurantDb.from("expense_entries").select("*").order("date", { ascending: false }).limit(200);
     if (data) setExpenses(data as Expense[]);
   };
 
@@ -232,7 +233,7 @@ function Gastos() {
         invoice_url = path;
       }
       // Step 1: Insert the row (a database trigger may overwrite paid_by on INSERT)
-      const { data: insertedRow, error } = await supabase.from("expense_entries").insert({
+      const { data: insertedRow, error } = await restaurantDb.from("expense_entries").insert({
         user_id: user.id,
         description: desc,
         amount: Number(amount),
@@ -245,7 +246,7 @@ function Gastos() {
 
       // Step 2: If the trigger changed paid_by, fix it via UPDATE (bypasses the trigger)
       if (insertedRow && insertedRow.paid_by !== paidBy) {
-        await supabase.from("expense_entries")
+        await restaurantDb.from("expense_entries")
           .update({ paid_by: paidBy })
           .eq("id", insertedRow.id);
       }
@@ -270,7 +271,7 @@ function Gastos() {
     const confirmDelete = window.confirm("¿Estás seguro de que deseas eliminar este gasto?");
     if (!confirmDelete) return;
 
-    const { error } = await supabase.from("expense_entries").delete().eq("id", id);
+    const { error } = await restaurantDb.from("expense_entries").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Gasto eliminado");
     load();

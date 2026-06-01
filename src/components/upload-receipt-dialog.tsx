@@ -16,6 +16,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ReceiptText, Loader2, FileSpreadsheet, Save, Trash2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { restaurantDb } from "@/integrations/supabase/restaurant-client";
 import { analyzeReceipt, type ReceiptLine } from "@/lib/receipt-analyzer.functions";
 
 type Row = { id: string; invoice: string; amount: string };
@@ -139,7 +140,7 @@ export function UploadReceiptDialog({
       payment_method: "efectivo",
       ...(restaurantBranch ? { restaurant_branch: restaurantBranch } : {}),
     }));
-    const { error } = await supabase.from("sales_entries").insert(payload);
+    const { error } = await restaurantDb.from("sales_entries").insert(payload);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success(`${valid.length} ventas en efectivo registradas para ${date}.`);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { restaurantDb } from "@/integrations/supabase/restaurant-client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,7 +73,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
   const isEmployee = role === "employee";
 
   const load = async () => {
-    const query = supabase.from("sales_entries").select("*").order("date", { ascending: false }).limit(200);
+    const query = restaurantDb.from("sales_entries").select("*").order("date", { ascending: false }).limit(200);
 
     let response;
     if (branchKey === "borrego") {
@@ -103,7 +104,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
     const finalDesc = isCustomDesc ? customDesc : desc;
     if (!finalDesc) return toast.error("Por favor ingresa una descripción.");
 
-    const { error } = await supabase.from("sales_entries").insert({
+    const { error } = await restaurantDb.from("sales_entries").insert({
       user_id: user.id,
       description: finalDesc,
       amount: Number(amount),
@@ -129,7 +130,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
     const confirmDelete = window.confirm("¿Estás seguro de que deseas eliminar esta venta?");
     if (!confirmDelete) return;
 
-    const { error } = await supabase.from("sales_entries").delete().eq("id", id);
+    const { error } = await restaurantDb.from("sales_entries").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Venta eliminada");
     load();

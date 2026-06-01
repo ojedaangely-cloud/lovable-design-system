@@ -1,9 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState, useMemo } from "react";
+import { restaurantDb } from "@/integrations/supabase/restaurant-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -18,6 +23,8 @@ import {
   ArrowUpRight,
   Plus,
   Info,
+  CalendarIcon,
+  ChevronDown,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -60,25 +67,46 @@ type Sale = {
 type Expense = { amount: number; date: string; description: string; category: string };
 type Inv = { name: string; stock: number; min_stock: number; unit: string };
 
+function getMonthStartEnd() {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+  return { start, end: today };
+}
+
 function Dashboard() {
+  const { start: defaultStart, end: defaultEnd } = getMonthStartEnd();
+  const [dateFrom, setDateFrom] = useState<Date>(defaultStart);
+  const [dateTo, setDateTo] = useState<Date>(defaultEnd);
   const [sales, setSales] = useState<Sale[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [inventory, setInventory] = useState<Inv[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fromStr = useMemo(() => format(dateFrom, "yyyy-MM-dd"), [dateFrom]);
+  const toStr = useMemo(() => format(dateTo, "yyyy-MM-dd"), [dateTo]);
+
   useEffect(() => {
+    setLoading(true);
     (async () => {
       const [s, e, i] = await Promise.all([
-        supabase.from("sales_entries").select("amount,date,description,payment_method,restaurant_branch"),
-        supabase.from("expense_entries").select("amount,date,description,category"),
-        supabase.from("inventory_items").select("name,stock,min_stock,unit"),
+        restaurantDb
+          .from("sales_entries")
+          .select("amount,date,description,payment_method,restaurant_branch")
+          .gte("date", fromStr)
+          .lte("date", toStr),
+        restaurantDb
+          .from("expense_entries")
+          .select("amount,date,description,category")
+          .gte("date", fromStr)
+          .lte("date", toStr),
+        restaurantDb.from("inventory_items").select("name,stock,min_stock,unit"),
       ]);
       setSales((s.data ?? []) as Sale[]);
       setExpenses((e.data ?? []) as Expense[]);
       setInventory((i.data ?? []) as Inv[]);
       setLoading(false);
     })();
-  }, []);
+  }, [fromStr, toStr]);
 
   const salesBorrego = sales.filter((s) => s.restaurant_branch === "borrego" || !s.restaurant_branch);
   const salesCantarito = sales.filter((s) => s.restaurant_branch === "cantarito");
@@ -91,64 +119,90 @@ function Dashboard() {
 
   const totalExpenses = expenses.reduce((a, b) => a + Number(b.amount || 0), 0);
 
-  // Tips / Propina: Sum of sales with "propina" or "tip" in description
   const tipsPropina = sales
     .filter((s) => s.description?.toLowerCase().includes("propina") || s.description?.toLowerCase().includes("tip"))
     .reduce((a, b) => a + Number(b.amount || 0), 0);
 
-  // Ganancia Neta = suma de las dos empresas - Gastos totales - Tips Propina
   const profit = totalSales - totalExpenses - tipsPropina;
   const margin = totalSales > 0 ? (profit / totalSales) * 100 : 0;
   const lowStock = inventory.filter((x) => Number(x.stock) <= Number(x.min_stock));
 
-  // Last 7 days sales chart (real data only)
-  const today = new Date();
-  const last7: { name: string; date: string; value: number }[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const iso = d.toISOString().slice(0, 10);
-    last7.push({
-      name: d.toLocaleDateString("es-ES", { weekday: "short" }),
-      date: iso,
-      value: 0,
+  const chartData = useMemo(() => {
+    const data: { name: string; date: string; value: number }[] = [];
+    const start = new Date(dateFrom);
+    const end = new Date(dateTo);
+    const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 31) {
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const iso = format(d, "yyyy-MM-dd");
+        data.push({
+          name: format(d, "dd MMM", { locale: es }),
+          date: iso,
+          value: 0,
+        });
+      }
+    } else {
+      const months = new Map<string, { name: string; date: string; value: number }>();
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const monthKey = format(d, "yyyy-MM");
+        if (!months.has(monthKey)) {
+          months.set(monthKey, {
+            name: format(d, "MMM yyyy", { locale: es }),
+            date: monthKey,
+            value: 0,
+          });
+        }
+      }
+      data.push(...Array.from(months.values()));
+    }
+
+    sales.forEach((s) => {
+      if (diffDays <= 31) {
+        const slot = data.find((d) => d.date === s.date);
+        if (slot) slot.value += Number(s.amount || 0);
+      } else {
+        const monthKey = s.date?.slice(0, 7);
+        const slot = data.find((d) => d.date === monthKey);
+        if (slot) slot.value += Number(s.amount || 0);
+      }
     });
-  }
-  sales.forEach((s) => {
-    const slot = last7.find((d) => d.date === s.date);
-    if (slot) slot.value += Number(s.amount || 0);
-  });
-  const chartHasData = last7.some((d) => d.value > 0);
+    return data;
+  }, [sales, dateFrom, dateTo]);
 
-  // Sales today / this month
-  const todayIso = today.toISOString().slice(0, 10);
-  const monthPrefix = todayIso.slice(0, 7);
+  const chartHasData = chartData.some((d) => d.value > 0);
 
-  const todaySalesBorrego = salesBorrego
-    .filter((s) => s.date === todayIso)
-    .reduce((a, b) => a + Number(b.amount || 0), 0);
-  const todaySalesCantarito = salesCantarito
-    .filter((s) => s.date === todayIso)
-    .reduce((a, b) => a + Number(b.amount || 0), 0);
+  const todayIso = format(new Date(), "yyyy-MM-dd");
+  const todayInRange = todayIso >= fromStr && todayIso <= toStr;
+  const todaySalesBorrego = todayInRange
+    ? salesBorrego.filter((s) => s.date === todayIso).reduce((a, b) => a + Number(b.amount || 0), 0)
+    : 0;
+  const todaySalesCantarito = todayInRange
+    ? salesCantarito.filter((s) => s.date === todayIso).reduce((a, b) => a + Number(b.amount || 0), 0)
+    : 0;
   const todaySales = todaySalesBorrego + todaySalesCantarito;
 
-  const monthSalesBorrego = salesBorrego
-    .filter((s) => s.date?.startsWith(monthPrefix))
-    .reduce((a, b) => a + Number(b.amount || 0), 0);
-  const monthSalesCantarito = salesCantarito
-    .filter((s) => s.date?.startsWith(monthPrefix))
-    .reduce((a, b) => a + Number(b.amount || 0), 0);
+  const monthPrefix = format(new Date(), "yyyy-MM");
+  const currentMonthInRange = fromStr <= monthPrefix + "-31" && toStr >= monthPrefix + "-01";
+
+  const monthSalesBorrego = currentMonthInRange
+    ? salesBorrego.filter((s) => s.date?.startsWith(monthPrefix)).reduce((a, b) => a + Number(b.amount || 0), 0)
+    : 0;
+  const monthSalesCantarito = currentMonthInRange
+    ? salesCantarito.filter((s) => s.date?.startsWith(monthPrefix)).reduce((a, b) => a + Number(b.amount || 0), 0)
+    : 0;
   const monthSales = monthSalesBorrego + monthSalesCantarito;
 
-  const monthExpenses = expenses
-    .filter((e) => e.date?.startsWith(monthPrefix))
-    .reduce((a, b) => a + Number(b.amount || 0), 0);
+  const monthExpenses = currentMonthInRange
+    ? expenses.filter((e) => e.date?.startsWith(monthPrefix)).reduce((a, b) => a + Number(b.amount || 0), 0)
+    : 0;
 
-  const monthTips = sales
-    .filter((s) => s.date?.startsWith(monthPrefix) && (s.description?.toLowerCase().includes("propina") || s.description?.toLowerCase().includes("tip")))
-    .reduce((a, b) => a + Number(b.amount || 0), 0);
+  const monthTips = currentMonthInRange
+    ? sales
+        .filter((s) => s.date?.startsWith(monthPrefix) && (s.description?.toLowerCase().includes("propina") || s.description?.toLowerCase().includes("tip")))
+        .reduce((a, b) => a + Number(b.amount || 0), 0)
+    : 0;
 
-  // Payment method breakdown (real)
   const byMethod = sales.reduce<Record<string, number>>((acc, s) => {
     const k = s.payment_method || "otro";
     acc[k] = (acc[k] || 0) + Number(s.amount || 0);
@@ -156,12 +210,10 @@ function Dashboard() {
   }, {});
   const methodEntries = Object.entries(byMethod).sort((a, b) => b[1] - a[1]);
 
-  // Recent sales
   const recentSales = [...sales]
     .sort((a, b) => (a.date < b.date ? 1 : -1))
     .slice(0, 5);
 
-  // Recent expenses
   const recentExpenses = [...expenses]
     .sort((a, b) => (a.date < b.date ? 1 : -1))
     .slice(0, 5);
@@ -177,10 +229,61 @@ function Dashboard() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {/* Date Range Filter */}
+          <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-1.5 shadow-sm">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "justify-start text-left font-normal h-9 px-3 text-sm",
+                    !dateFrom && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                  {dateFrom ? format(dateFrom, "dd MMM yyyy", { locale: es }) : "Desde"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateFrom}
+                  onSelect={(d) => d && setDateFrom(d)}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            <span className="text-muted-foreground text-sm">—</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "justify-start text-left font-normal h-9 px-3 text-sm",
+                    !dateTo && "text-muted-foreground"
+                  )}
+                >
+                  {dateTo ? format(dateTo, "dd MMM yyyy", { locale: es }) : "Hasta"}
+                  <ChevronDown className="ml-2 h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={dateTo}
+                  onSelect={(d) => d && setDateTo(d)}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
           <Button asChild variant="outline" className="font-semibold">
             <Link to="/gastos">Registrar Gasto</Link>
           </Button>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button className="bg-primary hover:bg-primary/95 text-white font-semibold flex items-center gap-2 cursor-pointer">
@@ -199,13 +302,18 @@ function Dashboard() {
         </div>
       </div>
 
-      {loading && (
-        <p className="text-sm text-muted-foreground">Cargando datos...</p>
-      )}
+      {/* Date range indicator */}
+      <div className="flex items-center gap-2">
+        <Badge variant="secondary" className="font-medium">
+          {format(dateFrom, "dd MMM yyyy", { locale: es })} — {format(dateTo, "dd MMM yyyy", { locale: es })}
+        </Badge>
+        {loading && (
+          <span className="text-sm text-muted-foreground">Cargando datos...</span>
+        )}
+      </div>
 
-      {/* KPI Cards - all real */}
+      {/* KPI Cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {/* Ventas Borrego */}
         <Card className="bg-card border border-border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -221,7 +329,6 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Ventas Cantarito */}
         <Card className="bg-card border border-border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -237,7 +344,6 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Ventas Totales */}
         <Card className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-black text-white border-none shadow-xl sm:col-span-2 lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-white/80">
@@ -253,7 +359,6 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Gastos Totales */}
         <Card className="bg-card border border-border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -269,7 +374,6 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Tips / Propina */}
         <Card className="bg-card border border-border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -285,7 +389,6 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Ganancia Neta */}
         <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 shadow-md relative overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
@@ -303,7 +406,6 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Stock Bajo */}
         <Card className="bg-card border border-border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -327,7 +429,59 @@ function Dashboard() {
       {/* Main grid */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          {/* Sales distribution gauge */}
+          <Card className="border border-border/60 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle className="text-base font-bold">
+                  Ventas {chartData.length > 31 ? "por mes" : "diarias"}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {chartData.length > 31
+                    ? "Agrupado por mes"
+                    : `Del ${format(dateFrom, "dd MMM", { locale: es })} al ${format(dateTo, "dd MMM", { locale: es })}`}
+                </p>
+              </div>
+              <Badge variant="outline" className="font-bold border-primary/20 text-primary bg-primary/5">
+                Total: ${fmt(totalSales)}
+              </Badge>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {chartHasData ? (
+                <div className="h-[260px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 11, fill: "currentColor" }}
+                        className="text-muted-foreground"
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: "currentColor" }}
+                        className="text-muted-foreground"
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(v) => `$${Number(v).toFixed(0)}`}
+                        width={50}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                        {chartData.map((_, i) => (
+                          <Cell key={i} fill="#0d631b" className="opacity-90 hover:opacity-100 transition-opacity" />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-12 text-center">
+                  No hay ventas en el rango seleccionado.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           <Card className="border border-border/60 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div>
@@ -342,24 +496,18 @@ function Dashboard() {
             </CardHeader>
             <CardContent className="pt-4">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-8 py-2">
-                {/* Left: Gauge */}
                 <div className="relative w-[220px] h-[130px] flex items-center justify-center">
                   <svg viewBox="0 0 200 160" className="w-full h-full overflow-visible">
                     <defs>
-                      {/* Red gradient for progress */}
                       <linearGradient id="redGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                         <stop offset="0%" stopColor="#f43f5e" />
                         <stop offset="50%" stopColor="#e11d48" />
                         <stop offset="100%" stopColor="#9f1239" />
                       </linearGradient>
-                      
-                      {/* Pattern for unfilled/striped part */}
                       <pattern id="stripes" width="10" height="10" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
                         <line x1="0" y1="0" x2="0" y2="10" stroke="currentColor" className="text-muted/40" strokeWidth="3" />
                       </pattern>
                     </defs>
-
-                    {/* Base track background to give a soft base color to stripes */}
                     <path
                       d="M 30.72 140 A 80 80 0 1 1 169.28 140"
                       fill="none"
@@ -368,8 +516,6 @@ function Dashboard() {
                       strokeWidth="18"
                       strokeLinecap="round"
                     />
-
-                    {/* Background track (striped) */}
                     <path
                       d="M 30.72 140 A 80 80 0 1 1 169.28 140"
                       fill="none"
@@ -377,8 +523,6 @@ function Dashboard() {
                       strokeWidth="18"
                       strokeLinecap="round"
                     />
-
-                    {/* Progress track (red gradient) */}
                     {totalSales > 0 && (
                       <path
                         d="M 30.72 140 A 80 80 0 1 1 169.28 140"
@@ -392,8 +536,6 @@ function Dashboard() {
                       />
                     )}
                   </svg>
-
-                  {/* Center Text inside gauge */}
                   <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center justify-center text-center">
                     <span className="text-3xl font-black tracking-tight text-foreground">
                       {totalSales > 0 ? `${pctBorrego.toFixed(0)}%` : "0%"}
@@ -403,10 +545,7 @@ function Dashboard() {
                     </span>
                   </div>
                 </div>
-
-                {/* Right: Detailed breakdown */}
                 <div className="flex-1 w-full space-y-3">
-                  {/* El Borrego */}
                   <div className="p-3 rounded-xl border border-border bg-card shadow-sm hover:border-red-500/20 transition-all">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
@@ -422,8 +561,6 @@ function Dashboard() {
                       </span>
                     </div>
                   </div>
-
-                  {/* Cantarito Taqueria */}
                   <div className="p-3 rounded-xl border border-border bg-card shadow-sm hover:border-border/80 transition-all">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
@@ -439,15 +576,13 @@ function Dashboard() {
                       </span>
                     </div>
                   </div>
-
-                  {/* Insight message */}
                   <p className="text-[11px] text-muted-foreground flex items-start gap-1.5 bg-accent/25 p-2 rounded-lg border border-accent/10">
                     <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
                     <span>
-                      {pctBorrego === 100 
-                        ? "El Borrego Dorado representa la totalidad de las ventas registradas." 
-                        : pctBorrego > 0 
-                          ? `El Borrego Dorado lidera con el ${pctBorrego.toFixed(1)}% frente al ${pctCantarito.toFixed(1)}% de Cantarito.` 
+                      {pctBorrego === 100
+                        ? "El Borrego Dorado representa la totalidad de las ventas registradas."
+                        : pctBorrego > 0
+                          ? `El Borrego Dorado lidera con el ${pctBorrego.toFixed(1)}% frente al ${pctCantarito.toFixed(1)}% de Cantarito.`
                           : "Aún no hay ventas registradas en el sistema."
                       }
                     </span>
@@ -457,18 +592,17 @@ function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Recent sales - real */}
           <Card className="border border-border/60 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-bold">Ventas recientes</CardTitle>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {sales.length === 0 ? "Sin ventas registradas" : `${sales.length} ventas en total`}
+                {sales.length === 0 ? "Sin ventas registradas" : `${sales.length} ventas en el rango`}
               </p>
             </CardHeader>
             <CardContent>
               {recentSales.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-6 text-center">
-                  No hay ventas registradas todavía.
+                  No hay ventas registradas en el rango seleccionado.
                 </p>
               ) : (
                 <div className="space-y-3">
@@ -495,7 +629,6 @@ function Dashboard() {
         </div>
 
         <div className="space-y-6">
-          {/* Payment methods - real */}
           <Card className="border border-border/60 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-bold">Métodos de pago</CardTitle>
@@ -535,7 +668,6 @@ function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Low stock - real */}
           <Card className="border border-border/60 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-bold">Inventario bajo</CardTitle>
@@ -575,20 +707,19 @@ function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Recent expenses - real */}
           <Card className="border border-border/60 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-bold">Gastos recientes</CardTitle>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {expenses.length === 0
                   ? "Sin gastos registrados"
-                  : `${expenses.length} gastos en total`}
+                  : `${expenses.length} gastos en el rango`}
               </p>
             </CardHeader>
             <CardContent>
               {recentExpenses.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
-                  No hay gastos registrados.
+                  No hay gastos registrados en el rango seleccionado.
                 </p>
               ) : (
                 <div className="space-y-2">
