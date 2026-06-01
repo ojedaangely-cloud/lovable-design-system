@@ -54,7 +54,7 @@ function Inventario() {
   const isEmployee = role === "employee";
 
   const load = async () => {
-    const { data } = await supabase.from("inventory_items").select("*").order("name");
+    const { data } = await restaurantDb.from("inventory_items").select("*").order("name");
     if (data) setItems(data as Item[]);
   };
 
@@ -65,7 +65,7 @@ function Inventario() {
   const add = async () => {
     if (isEmployee) return toast.error("Tu rol no permite agregar artículos.");
     if (!name || !user) return;
-    const { error } = await supabase.from("inventory_items").insert({
+    const { error } = await restaurantDb.from("inventory_items").insert({
       user_id: user.id,
       name,
       unit,
@@ -88,7 +88,7 @@ function Inventario() {
     const confirmDelete = window.confirm("¿Estás seguro de que deseas eliminar este artículo?");
     if (!confirmDelete) return;
 
-    const { error } = await supabase.from("inventory_items").delete().eq("id", id);
+    const { error } = await restaurantDb.from("inventory_items").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Artículo eliminado");
     load();

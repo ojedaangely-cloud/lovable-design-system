@@ -288,7 +288,7 @@ function Nomina() {
     if (!canWrite) return toast.error("No tienes permisos para agregar empleados.");
     if (!empName || !empRate || !user) return;
 
-    const { error } = await supabase.from("employees").insert({
+    const { error } = await restaurantDb.from("employees").insert({
       user_id: user.id,
       name: empName,
       position: empPosition,
@@ -360,11 +360,11 @@ function Nomina() {
         .map((l) => l.expense_entry_id)
         .filter((id): id is string => !!id);
       if (expenseIds.length > 0) {
-        await supabase.from("expense_entries").delete().in("id", expenseIds);
+        await restaurantDb.from("expense_entries").delete().in("id", expenseIds);
       }
     }
 
-    const { error } = await supabase.from("employees").delete().eq("id", emp.id);
+    const { error } = await restaurantDb.from("employees").delete().eq("id", emp.id);
     if (error) return toast.error(error.message);
 
     toast.success("Empleado eliminado");
@@ -460,7 +460,7 @@ function Nomina() {
     if (expenseError) return toast.error(`Error al registrar gasto: ${expenseError.message}`);
 
     // 2. Insert the payroll record
-    const { error: payrollError } = await supabase.from("payroll_records").insert({
+    const { error: payrollError } = await restaurantDb.from("payroll_records").insert({
       user_id: user.id,
       employee_id: empId,
       date: new Date().toISOString().split("T")[0],
@@ -473,7 +473,7 @@ function Nomina() {
     });
 
     if (payrollError) {
-      await supabase.from("expense_entries").delete().eq("id", expenseData.id);
+      await restaurantDb.from("expense_entries").delete().eq("id", expenseData.id);
       return toast.error(payrollError.message);
     }
 
@@ -524,7 +524,7 @@ function Nomina() {
     if (expenseError) return toast.error(`Error al registrar gasto: ${expenseError.message}`);
 
     // 2. Insert the payroll record referencing the new expense ID
-    const { error: payrollError } = await supabase.from("payroll_records").insert({
+    const { error: payrollError } = await restaurantDb.from("payroll_records").insert({
       user_id: user.id,
       employee_id: payEmployeeId,
       date: payDate,
@@ -537,7 +537,7 @@ function Nomina() {
     });
 
     if (payrollError) {
-      await supabase.from("expense_entries").delete().eq("id", expenseData.id);
+      await restaurantDb.from("expense_entries").delete().eq("id", expenseData.id);
       return toast.error(payrollError.message);
     }
 
@@ -560,10 +560,10 @@ function Nomina() {
     if (!confirmDelete) return;
 
     if (record.expense_entry_id) {
-      await supabase.from("expense_entries").delete().eq("id", record.expense_entry_id);
+      await restaurantDb.from("expense_entries").delete().eq("id", record.expense_entry_id);
     }
 
-    const { error } = await supabase.from("payroll_records").delete().eq("id", record.id);
+    const { error } = await restaurantDb.from("payroll_records").delete().eq("id", record.id);
     if (error) return toast.error(error.message);
 
     toast.success("Registro de pago y gasto asociado eliminados");

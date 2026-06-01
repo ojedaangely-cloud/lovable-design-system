@@ -139,7 +139,7 @@ export function UploadReceiptDialog({
       payment_method: "efectivo",
       ...(restaurantBranch ? { restaurant_branch: restaurantBranch } : {}),
     }));
-    const { error } = await supabase.from("sales_entries").insert(payload);
+    const { error } = await restaurantDb.from("sales_entries").insert(payload);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success(`${valid.length} ventas en efectivo registradas para ${date}.`);
