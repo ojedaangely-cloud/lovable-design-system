@@ -1438,12 +1438,12 @@ function Nomina() {
 
       {/* EDIT EMPLOYEE DIALOG */}
       <Dialog open={!!editingEmployee} onOpenChange={(open) => !open && setEditingEmployee(null)}>
-        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl bg-card border border-border/80 p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border/40">
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl bg-card border border-border/80 p-0 overflow-hidden max-h-[90vh] flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border/40 shrink-0">
             <DialogTitle>Editar Empleado</DialogTitle>
             <DialogDescription>Modifica los datos del personal seleccionado.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleUpdateEmployee} className="space-y-4 px-6 py-4 min-w-0">
+          <form onSubmit={handleUpdateEmployee} className="space-y-4 px-6 py-4 min-w-0 overflow-y-auto flex-1">
             <div className="space-y-1.5">
               <Label htmlFor="editEmpName">Nombre y Apellido</Label>
               <Input
@@ -1493,7 +1493,7 @@ function Nomina() {
                 onChange={(e) => setEditEmpLinkedUser(e.target.value)}
               />
             </div>
-            <DialogFooter className="gap-2 sm:gap-0 pt-4 w-full">
+            <DialogFooter className="gap-2 sm:gap-0 pt-4 w-full shrink-0">
               <Button type="button" variant="outline" className="rounded-xl flex-1 sm:flex-initial" onClick={() => setEditingEmployee(null)}>
                 Cancelar
               </Button>
@@ -1507,12 +1507,12 @@ function Nomina() {
 
       {/* EDIT PAYROLL DIALOG */}
       <Dialog open={!!editingPayroll} onOpenChange={(open) => !open && setEditingPayroll(null)}>
-        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl bg-card border border-border/80 p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border/40">
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl bg-card border border-border/80 p-0 overflow-hidden max-h-[90vh] flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border/40 shrink-0">
             <DialogTitle>Editar Registro de Pago</DialogTitle>
             <DialogDescription>Modifica los detalles de horas o tarifa.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleUpdatePayroll} className="space-y-4 px-6 py-4 min-w-0">
+          <form onSubmit={handleUpdatePayroll} className="space-y-4 px-6 py-4 min-w-0 overflow-y-auto flex-1">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1.5">
                 <Label htmlFor="editPayHours">Horas Trab.</Label>
@@ -1556,7 +1556,7 @@ function Nomina() {
                 onChange={(e) => setEditPayNotes(e.target.value)}
               />
             </div>
-            <DialogFooter className="gap-2 sm:gap-0 pt-4 w-full">
+            <DialogFooter className="gap-2 sm:gap-0 pt-4 w-full shrink-0">
               <Button type="button" variant="outline" className="rounded-xl flex-1 sm:flex-initial" onClick={() => setEditingPayroll(null)}>
                 Cancelar
               </Button>
