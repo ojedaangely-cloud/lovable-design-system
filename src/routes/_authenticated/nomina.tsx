@@ -155,7 +155,7 @@ function Nomina() {
     if (!user) return;
 
     // Load employees
-    const { data: empData } = await supabase
+    const { data: empData } = await restaurantDb
       .from("employees")
       .select("*")
       .order("name");
@@ -191,7 +191,7 @@ function Nomina() {
 
         if (linkedEmp) {
           // Permanently link this user.id to the employee profile in Supabase
-          supabase
+          restaurantDb
             .from("employees")
             .update({ linked_user_id: user.id })
             .eq("id", linkedEmp.id)
@@ -218,7 +218,7 @@ function Nomina() {
 
     if (canWrite) {
       // Load payroll records with employee joined details
-      const { data: prData } = await supabase
+      const { data: prData } = await restaurantDb
         .from("payroll_records")
         .select(`
           *,
@@ -232,7 +232,7 @@ function Nomina() {
     }
 
     // Load time entries based on role
-    let timeQuery = supabase
+    let timeQuery = restaurantDb
       .from("time_entries")
       .select(`
         *,
@@ -318,7 +318,7 @@ function Nomina() {
       return toast.error("Solo puedes editar registros creados por ti mismo.");
     }
 
-    const { error } = await supabase
+    const { error } = await restaurantDb
       .from("employees")
       .update({
         name: editEmpName,
@@ -351,7 +351,7 @@ function Nomina() {
     if (!confirmDelete) return;
 
     // Delete linked expense entries first (via payroll cascade)
-    const { data: logs } = await supabase
+    const { data: logs } = await restaurantDb
       .from("payroll_records")
       .select("expense_entry_id")
       .eq("employee_id", emp.id);
@@ -386,7 +386,7 @@ function Nomina() {
       const diffMs = new Date(clockOutTime).getTime() - clockInTime.getTime();
       const hoursWorked = diffMs / (1000 * 60 * 60);
 
-      const { error } = await supabase
+      const { error } = await restaurantDb
         .from("time_entries")
         .update({
           clock_out: clockOutTime,
@@ -398,7 +398,7 @@ function Nomina() {
       toast.success("Salida registrada con éxito.");
     } else {
       // Clock In
-      const { error } = await supabase
+      const { error } = await restaurantDb
         .from("time_entries")
         .insert({
           employee_id: selectedEmployeeId,
@@ -421,7 +421,7 @@ function Nomina() {
     if (user) {
       const selectedEmp = employees.find(e => e.id === id);
       if (selectedEmp && !selectedEmp.linked_user_id) {
-        const { error } = await supabase
+        const { error } = await restaurantDb
           .from("employees")
           .update({ linked_user_id: user.id })
           .eq("id", id);
@@ -445,7 +445,7 @@ function Nomina() {
     if (!confirmLiquidate) return;
 
     // 1. Create corresponding expense entry
-    const { data: expenseData, error: expenseError } = await supabase
+    const { data: expenseData, error: expenseError } = await restaurantDb
       .from("expense_entries")
       .insert({
         user_id: user.id,
@@ -479,7 +479,7 @@ function Nomina() {
     }
 
     // 3. Mark time entries as paid
-    const { error: updateError } = await supabase
+    const { error: updateError } = await restaurantDb
       .from("time_entries")
       .update({ is_paid: true })
       .eq("employee_id", empId)
@@ -508,7 +508,7 @@ function Nomina() {
     const total = hours * rate;
 
     // 1. Create corresponding expense entry in expense_entries
-    const { data: expenseData, error: expenseError } = await supabase
+    const { data: expenseData, error: expenseError } = await restaurantDb
       .from("expense_entries")
       .insert({
         user_id: user.id,
@@ -584,7 +584,7 @@ function Nomina() {
     const rate = Number(editPayRate);
     const total = hours * rate;
 
-    const { error: prError } = await supabase
+    const { error: prError } = await restaurantDb
       .from("payroll_records")
       .update({
         hours_worked: hours,
@@ -598,7 +598,7 @@ function Nomina() {
 
     if (editingPayroll.expense_entry_id) {
       const empNameStr = editingPayroll.employees?.name || "Empleado";
-      await supabase
+      await restaurantDb
         .from("expense_entries")
         .update({
           amount: total,
