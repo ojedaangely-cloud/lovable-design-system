@@ -70,7 +70,8 @@ type Inv = { name: string; stock: number; min_stock: number; unit: string };
 function getMonthStartEnd() {
   const today = new Date();
   const start = new Date(today.getFullYear(), today.getMonth(), 1);
-  return { start, end: today };
+  const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  return { start, end };
 }
 
 function Dashboard() {
@@ -229,57 +230,6 @@ function Dashboard() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {/* Date Range Filter */}
-          <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-1.5 shadow-sm">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "justify-start text-left font-normal h-9 px-3 text-sm",
-                    !dateFrom && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                  {dateFrom ? format(dateFrom, "dd MMM yyyy", { locale: es }) : "Desde"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={dateFrom}
-                  onSelect={(d) => d && setDateFrom(d)}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
-            <span className="text-muted-foreground text-sm">—</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "justify-start text-left font-normal h-9 px-3 text-sm",
-                    !dateTo && "text-muted-foreground"
-                  )}
-                >
-                  {dateTo ? format(dateTo, "dd MMM yyyy", { locale: es }) : "Hasta"}
-                  <ChevronDown className="ml-2 h-3.5 w-3.5 text-muted-foreground" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="single"
-                  selected={dateTo}
-                  onSelect={(d) => d && setDateTo(d)}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
           <Button asChild variant="outline" className="font-semibold">
             <Link to="/gastos">Registrar Gasto</Link>
           </Button>
@@ -303,9 +253,9 @@ function Dashboard() {
       </div>
 
       {/* Date range indicator */}
-      <div className="flex items-center gap-2">
-        <Badge variant="secondary" className="font-medium">
-          {format(dateFrom, "dd MMM yyyy", { locale: es })} — {format(dateTo, "dd MMM yyyy", { locale: es })}
+      <div className="flex items-center gap-2 animate-fade-in">
+        <Badge variant="secondary" className="font-bold text-primary bg-primary/5 border border-primary/20 capitalize py-1 px-3 rounded-full text-xs">
+          Mes actual: {format(dateFrom, "MMMM yyyy", { locale: es })}
         </Badge>
         {loading && (
           <span className="text-sm text-muted-foreground">Cargando datos...</span>

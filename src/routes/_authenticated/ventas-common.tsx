@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { restaurantDb } from "@/integrations/supabase/restaurant-client";
 import { useAuth } from "@/hooks/use-auth";
+import { useViewFilter } from "@/hooks/use-view-filter";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -37,6 +40,23 @@ export type Sale = {
   user_id: string;
 };
 
+const MONTHS_FULL = [
+  { value: "0", label: "Enero" },
+  { value: "1", label: "Febrero" },
+  { value: "2", label: "Marzo" },
+  { value: "3", label: "Abril" },
+  { value: "4", label: "Mayo" },
+  { value: "5", label: "Junio" },
+  { value: "6", label: "Julio" },
+  { value: "7", label: "Agosto" },
+  { value: "8", label: "Septiembre" },
+  { value: "9", label: "Octubre" },
+  { value: "10", label: "Noviembre" },
+  { value: "11", label: "Diciembre" }
+];
+
+const YEARS = ["2025", "2026", "2027"];
+
 export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; branchKey?: string }) {
   const { user, role } = useAuth();
   const [sales, setSales] = useState<Sale[]>([]);
@@ -50,10 +70,25 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
   const [method, setMethod] = useState("efectivo");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
 
-  // Period filtering states
-  const [filterMode, setFilterMode] = useState<"all" | "daily" | "weekly" | "monthly" | "yearly" | "range">("all");
-  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
-  const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0]);
+  // Integrated filter states from hook
+  const {
+    fromStr,
+    toStr,
+    draftFilterType,
+    draftWeek,
+    draftMonth,
+    draftYear,
+    draftRangeStart,
+    draftRangeEnd,
+    setDraftFilterType,
+    setDraftWeek,
+    setDraftMonth,
+    setDraftYear,
+    setDraftRangeStart,
+    setDraftRangeEnd,
+    applyFilter,
+    availableWeeks,
+  } = useViewFilter();
 
   // View filters states: payment method and transaction type
   const [filterMethod, setFilterMethod] = useState<string>("all");
@@ -73,7 +108,11 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
   const isEmployee = role === "employee";
 
   const load = async () => {
-    const query = restaurantDb.from("sales_entries").select("*").order("date", { ascending: false }).limit(200);
+    let query = restaurantDb.from("sales_entries").select("*").order("date", { ascending: false });
+
+    if (fromStr && toStr) {
+      query = query.gte("date", fromStr).lte("date", toStr);
+    }
 
     let response;
     if (branchKey === "borrego") {
@@ -95,7 +134,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
 
   useEffect(() => {
     load();
-  }, []);
+  }, [fromStr, toStr]);
 
   const add = async () => {
     if (isEmployee) return toast.error("Tu rol no permite agregar ventas.");
@@ -181,49 +220,8 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
     load();
   };
 
-  // Period filtering logic
-  const periodFiltered = sales.filter((s) => {
-    if (!s.date) return true;
-
-    const sDateParts = s.date.split("-");
-    const sDate = new Date(Number(sDateParts[0]), Number(sDateParts[1]) - 1, Number(sDateParts[2]));
-    sDate.setHours(0, 0, 0, 0);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (filterMode === "daily") {
-      return sDate.getTime() === today.getTime();
-    }
-
-    if (filterMode === "weekly") {
-      const oneWeekAgo = new Date(today);
-      oneWeekAgo.setDate(today.getDate() - 7);
-      return sDate >= oneWeekAgo && sDate <= today;
-    }
-
-    if (filterMode === "monthly") {
-      return sDate.getFullYear() === today.getFullYear() && sDate.getMonth() === today.getMonth();
-    }
-
-    if (filterMode === "yearly") {
-      return sDate.getFullYear() === today.getFullYear();
-    }
-
-    if (filterMode === "range") {
-      const startParts = startDate.split("-");
-      const start = new Date(Number(startParts[0]), Number(startParts[1]) - 1, Number(startParts[2]));
-      start.setHours(0, 0, 0, 0);
-
-      const endParts = endDate.split("-");
-      const end = new Date(Number(endParts[0]), Number(endParts[1]) - 1, Number(endParts[2]));
-      end.setHours(23, 59, 59, 999);
-
-      return sDate >= start && sDate <= end;
-    }
-
-    return true;
-  });
+  // Period filtering logic (already filtered in database query by date range)
+  const periodFiltered = sales;
 
   // View filters: payment method and transaction type
   const filteredSales = periodFiltered.filter((s) => {
@@ -290,65 +288,144 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between border-b border-border/40 pb-2">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                <Filter className="h-3.5 w-3.5 text-primary" /> Filtros de Período / Año
+                <Filter className="h-3.5 w-3.5 text-primary" /> Consulta y Rango de Fechas
               </span>
               <Badge variant="outline" className="border-primary/20 text-primary font-semibold text-[10px] uppercase">
-                {role}
+                {format(new Date(fromStr + "T00:00:00"), "dd MMM", { locale: es })} – {format(new Date(toStr + "T00:00:00"), "dd MMM yyyy", { locale: es })}
               </Badge>
             </div>
 
-            {/* Date period buttons */}
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                { mode: "all", label: "Todo" },
-                { mode: "daily", label: "Diario" },
-                { mode: "weekly", label: "Semanal" },
-                { mode: "monthly", label: "Mensual" },
-                { mode: "yearly", label: "Anual" },
-                { mode: "range", label: "Rango de Fechas" },
-              ].map((btn) => {
-                const active = filterMode === btn.mode;
-                return (
-                  <Button
-                    key={btn.mode}
-                    size="sm"
-                    variant={active ? "default" : "outline"}
-                    className={`font-semibold rounded-xl text-xs px-3 h-8 cursor-pointer transition-all duration-300 ${
-                      active
-                        ? "bg-primary text-white shadow-sm"
-                        : "border-border hover:bg-accent/60 hover:text-foreground text-muted-foreground"
-                    }`}
-                    onClick={() => setFilterMode(btn.mode as any)}
-                  >
-                    {btn.label}
-                  </Button>
-                );
-              })}
-            </div>
-
-            {/* Custom Range Inputs */}
-            {filterMode === "range" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-2xl bg-accent/40 border border-border/50 animate-fade-in">
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold">Desde</Label>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    className="h-9 rounded-lg bg-background border-border/85"
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold">Hasta</Label>
-                  <Input
-                    type="date"
-                    value={endDate}
-                    className="h-9 rounded-lg bg-background border-border/85"
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
+            <div className="flex flex-wrap items-end gap-3">
+              {/* Option Selector */}
+              <div className="flex flex-col gap-1.5 min-w-[120px]">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Tipo de Filtro</Label>
+                <Select
+                  value={draftFilterType}
+                  onValueChange={(val: any) => setDraftFilterType(val)}
+                >
+                  <SelectTrigger className="h-10 rounded-xl border-border/80 text-xs bg-background focus:ring-2 focus:ring-primary/40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="semana" className="text-xs cursor-pointer font-semibold">Semana</SelectItem>
+                    <SelectItem value="mes" className="text-xs cursor-pointer font-semibold">Mes</SelectItem>
+                    <SelectItem value="ano" className="text-xs cursor-pointer font-semibold">Año</SelectItem>
+                    <SelectItem value="rango" className="text-xs cursor-pointer font-semibold">Rango de Fechas</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            )}
+
+              {/* Dynamic Selectors */}
+              {draftFilterType === "semana" && (
+                <div className="flex flex-col gap-1.5 min-w-[200px] flex-1 sm:flex-initial animate-fade-in">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Seleccionar Semana (Mié - Mar)</Label>
+                  <Select
+                    value={draftWeek}
+                    onValueChange={setDraftWeek}
+                  >
+                    <SelectTrigger className="h-10 rounded-xl border-border/80 text-xs bg-background focus:ring-2 focus:ring-primary/40 truncate">
+                      <SelectValue placeholder="Selecciona una semana" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      {availableWeeks.map((w) => (
+                        <SelectItem key={w.key} value={w.key} className="text-xs cursor-pointer font-semibold">
+                          {w.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {draftFilterType === "mes" && (
+                <>
+                  <div className="flex flex-col gap-1.5 min-w-[140px] flex-1 sm:flex-initial animate-fade-in">
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Mes</Label>
+                    <Select
+                      value={draftMonth}
+                      onValueChange={setDraftMonth}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl border-border/80 text-xs bg-background focus:ring-2 focus:ring-primary/40">
+                        <SelectValue placeholder="Selecciona un mes" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60 overflow-y-auto">
+                        {MONTHS_FULL.map((m) => (
+                          <SelectItem key={m.value} value={m.value} className="text-xs cursor-pointer font-semibold">
+                            {m.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5 min-w-[100px] flex-1 sm:flex-initial animate-fade-in">
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Año</Label>
+                    <Select
+                      value={draftYear}
+                      onValueChange={setDraftYear}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl border-border/80 text-xs bg-background focus:ring-2 focus:ring-primary/40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {YEARS.map((y) => (
+                          <SelectItem key={y} value={y} className="text-xs cursor-pointer font-semibold">{y}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+
+              {draftFilterType === "ano" && (
+                <div className="flex flex-col gap-1.5 min-w-[100px] flex-1 sm:flex-initial animate-fade-in">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Año</Label>
+                  <Select
+                    value={draftYear}
+                    onValueChange={setDraftYear}
+                  >
+                    <SelectTrigger className="h-10 rounded-xl border-border/80 text-xs bg-background focus:ring-2 focus:ring-primary/40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {YEARS.map((y) => (
+                        <SelectItem key={y} value={y} className="text-xs cursor-pointer font-semibold">{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {draftFilterType === "rango" && (
+                <div className="flex flex-wrap gap-3 flex-1 sm:flex-initial items-end animate-fade-in">
+                  <div className="flex flex-col gap-1.5 min-w-[130px] flex-1">
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Desde</Label>
+                    <Input
+                      type="date"
+                      value={draftRangeStart}
+                      className="h-10 rounded-xl bg-background border-border/80 text-xs"
+                      onChange={(e) => setDraftRangeStart(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5 min-w-[130px] flex-1">
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Hasta</Label>
+                    <Input
+                      type="date"
+                      value={draftRangeEnd}
+                      className="h-10 rounded-xl bg-background border-border/80 text-xs"
+                      onChange={(e) => setDraftRangeEnd(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Consultar Action Button */}
+              <Button
+                onClick={applyFilter}
+                className="h-10 px-5 rounded-xl text-xs font-bold bg-primary hover:bg-primary/95 text-white flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-primary/10 transition-all hover:scale-[1.02] ml-auto shrink-0"
+              >
+                Consultar
+              </Button>
+            </div>
 
             {/* View Filters: Payment Method & Transaction Type */}
             <div className="border-t border-border/40 pt-3">
