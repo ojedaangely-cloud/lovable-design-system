@@ -458,11 +458,11 @@ function ReportesPage() {
                   </TableHeader>
                   <TableBody>
                     {[
-                      { label: "Ventas Cantarito", values: monthlyTrend.cantarito, color: "text-indigo-600 dark:text-indigo-400" },
-                      { label: "Ventas Borrego", values: monthlyTrend.borrego, color: "text-rose-600 dark:text-rose-400" },
+                      { label: "Ventas Cantarito", values: monthlyTrend.cantarito, color: "text-green-600 dark:text-green-400" },
+                      { label: "Ventas Borrego", values: monthlyTrend.borrego, color: "text-green-600 dark:text-green-400" },
                       { label: "Total Ventas", values: monthlyTrend.totalVentas, bold: true },
                       { label: "Gastos", values: monthlyTrend.gastos, danger: true },
-                      { label: "Tips / Propina", values: monthlyTrend.tips, color: "text-amber-600 dark:text-amber-400" },
+                      { label: "Tips / Propina", values: monthlyTrend.tips, color: "text-red-600 dark:text-red-400" },
                       { label: "Profit", values: monthlyTrend.profit, bold: true },
                     ].map((row) => (
                       <TableRow key={row.label} className="hover:bg-accent/20 transition-colors">
