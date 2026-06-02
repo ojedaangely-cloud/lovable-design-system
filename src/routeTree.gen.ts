@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedVentasCantaritoRouteImport } from './routes/_authenticated/ventas-cantarito'
 import { Route as AuthenticatedVentasRouteImport } from './routes/_authenticated/ventas'
+import { Route as AuthenticatedReportesRouteImport } from './routes/_authenticated/reportes'
 import { Route as AuthenticatedNominaRouteImport } from './routes/_authenticated/nomina'
 import { Route as AuthenticatedInventarioRouteImport } from './routes/_authenticated/inventario'
 import { Route as AuthenticatedGastosRouteImport } from './routes/_authenticated/gastos'
@@ -43,6 +44,11 @@ const AuthenticatedVentasCantaritoRoute =
 const AuthenticatedVentasRoute = AuthenticatedVentasRouteImport.update({
   id: '/ventas',
   path: '/ventas',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedReportesRoute = AuthenticatedReportesRouteImport.update({
+  id: '/reportes',
+  path: '/reportes',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedNominaRoute = AuthenticatedNominaRouteImport.update({
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/gastos': typeof AuthenticatedGastosRoute
   '/inventario': typeof AuthenticatedInventarioRoute
   '/nomina': typeof AuthenticatedNominaRoute
+  '/reportes': typeof AuthenticatedReportesRoute
   '/ventas': typeof AuthenticatedVentasRoute
   '/ventas-cantarito': typeof AuthenticatedVentasCantaritoRoute
 }
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/gastos': typeof AuthenticatedGastosRoute
   '/inventario': typeof AuthenticatedInventarioRoute
   '/nomina': typeof AuthenticatedNominaRoute
+  '/reportes': typeof AuthenticatedReportesRoute
   '/ventas': typeof AuthenticatedVentasRoute
   '/ventas-cantarito': typeof AuthenticatedVentasCantaritoRoute
 }
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/_authenticated/gastos': typeof AuthenticatedGastosRoute
   '/_authenticated/inventario': typeof AuthenticatedInventarioRoute
   '/_authenticated/nomina': typeof AuthenticatedNominaRoute
+  '/_authenticated/reportes': typeof AuthenticatedReportesRoute
   '/_authenticated/ventas': typeof AuthenticatedVentasRoute
   '/_authenticated/ventas-cantarito': typeof AuthenticatedVentasCantaritoRoute
 }
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/gastos'
     | '/inventario'
     | '/nomina'
+    | '/reportes'
     | '/ventas'
     | '/ventas-cantarito'
   fileRoutesByTo: FileRoutesByTo
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/gastos'
     | '/inventario'
     | '/nomina'
+    | '/reportes'
     | '/ventas'
     | '/ventas-cantarito'
   id:
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/_authenticated/gastos'
     | '/_authenticated/inventario'
     | '/_authenticated/nomina'
+    | '/_authenticated/reportes'
     | '/_authenticated/ventas'
     | '/_authenticated/ventas-cantarito'
   fileRoutesById: FileRoutesById
@@ -186,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVentasRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/reportes': {
+      id: '/_authenticated/reportes'
+      path: '/reportes'
+      fullPath: '/reportes'
+      preLoaderRoute: typeof AuthenticatedReportesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/nomina': {
       id: '/_authenticated/nomina'
       path: '/nomina'
@@ -230,6 +249,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedGastosRoute: typeof AuthenticatedGastosRoute
   AuthenticatedInventarioRoute: typeof AuthenticatedInventarioRoute
   AuthenticatedNominaRoute: typeof AuthenticatedNominaRoute
+  AuthenticatedReportesRoute: typeof AuthenticatedReportesRoute
   AuthenticatedVentasRoute: typeof AuthenticatedVentasRoute
   AuthenticatedVentasCantaritoRoute: typeof AuthenticatedVentasCantaritoRoute
 }
@@ -240,6 +260,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedGastosRoute: AuthenticatedGastosRoute,
   AuthenticatedInventarioRoute: AuthenticatedInventarioRoute,
   AuthenticatedNominaRoute: AuthenticatedNominaRoute,
+  AuthenticatedReportesRoute: AuthenticatedReportesRoute,
   AuthenticatedVentasRoute: AuthenticatedVentasRoute,
   AuthenticatedVentasCantaritoRoute: AuthenticatedVentasCantaritoRoute,
 }
