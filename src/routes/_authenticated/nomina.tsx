@@ -232,7 +232,7 @@ function Nomina() {
     }
 
     // Load time entries based on role
-    let timeQuery = supabase
+    let timeQuery = restaurantDb
       .from("time_entries")
       .select(`
         *,
