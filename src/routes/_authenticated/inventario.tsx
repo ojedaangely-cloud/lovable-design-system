@@ -108,7 +108,7 @@ function Inventario() {
     if (isEmployee) return;
     if (!editingItem || !editName) return;
 
-    const { error } = await supabase
+    const { error } = await restaurantDb
       .from("inventory_items")
       .update({
         name: editName,

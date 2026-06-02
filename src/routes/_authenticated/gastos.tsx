@@ -290,7 +290,7 @@ function Gastos() {
     if (isEmployee) return;
     if (!editingExpense || !editAmount) return;
 
-    const { error } = await supabase
+    const { error } = await restaurantDb
       .from("expense_entries")
       .update({
         description: editDesc,
