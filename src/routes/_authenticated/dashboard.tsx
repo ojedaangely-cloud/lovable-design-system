@@ -89,12 +89,18 @@ function Dashboard() {
   useEffect(() => {
     setLoading(true);
     (async () => {
-      const [s, e, i] = await Promise.all([
+      const [s, sTrans, e, i] = await Promise.all([
         restaurantDb
           .from("sales_entries")
           .select("amount,date,description,payment_method,restaurant_branch")
           .gte("date", fromStr)
           .lte("date", toStr),
+        restaurantDb
+          .from("sales_transactions")
+          .select("amount,transaction_date,description,payment_method,restaurant_branch")
+          .eq("transaction_type", "venta_shift4")
+          .gte("transaction_date", fromStr)
+          .lte("transaction_date", toStr),
         restaurantDb
           .from("expense_entries")
           .select("amount,date,description,category")
@@ -102,7 +108,24 @@ function Dashboard() {
           .lte("date", toStr),
         restaurantDb.from("inventory_items").select("name,stock,min_stock,unit"),
       ]);
-      setSales((s.data ?? []) as Sale[]);
+
+      const mappedSalesEntries = (s.data ?? []).map((x: any) => ({
+        amount: Number(x.amount),
+        date: x.date,
+        description: x.description,
+        payment_method: x.payment_method,
+        restaurant_branch: x.restaurant_branch,
+      }));
+
+      const mappedShift4 = (sTrans.data ?? []).map((t: any) => ({
+        amount: Number(t.amount),
+        date: t.transaction_date,
+        description: t.description || "Venta Shift4",
+        payment_method: t.payment_method || "tarjeta",
+        restaurant_branch: t.restaurant_branch === "principal" ? "borrego" : t.restaurant_branch,
+      }));
+
+      setSales([...mappedSalesEntries, ...mappedShift4] as Sale[]);
       setExpenses((e.data ?? []) as Expense[]);
       setInventory((i.data ?? []) as Inv[]);
       setLoading(false);

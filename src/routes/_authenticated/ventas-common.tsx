@@ -37,7 +37,8 @@ export type Sale = {
   amount: number;
   payment_method: string;
   restaurant_branch?: string | null;
-  user_id: string;
+  user_id?: string | null;
+  transaction_type?: string;
 };
 
 const MONTHS_FULL = [
@@ -124,12 +125,55 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
       response = await query;
     }
 
+    let combinedSales: Sale[] = [];
+
     if (response.error) {
       console.error("Error cargando ventas:", response.error);
-      return;
+    } else if (response.data) {
+      combinedSales = (response.data as any[]).map((s) => ({
+        id: s.id,
+        date: s.date,
+        description: s.description,
+        amount: Number(s.amount),
+        payment_method: s.payment_method,
+        restaurant_branch: s.restaurant_branch,
+        user_id: s.user_id,
+        transaction_type: s.description,
+      }));
     }
 
-    if (response.data) setSales(response.data as Sale[]);
+    // Load sales_transactions if branchKey is "borrego" or not set
+    if (branchKey === "borrego" || !branchKey) {
+      let transQuery = restaurantDb
+        .from("sales_transactions")
+        .select("*")
+        .eq("transaction_type", "venta_shift4")
+        .order("transaction_date", { ascending: false });
+
+      if (fromStr && toStr) {
+        transQuery = transQuery.gte("transaction_date", fromStr).lte("transaction_date", toStr);
+      }
+
+      const transResponse = await transQuery;
+      if (transResponse.error) {
+        console.error("Error cargando sales_transactions:", transResponse.error);
+      } else if (transResponse.data) {
+        const mappedTrans = (transResponse.data as any[]).map((t) => ({
+          id: t.id,
+          date: t.transaction_date,
+          description: t.description || "Venta Shift4",
+          amount: Number(t.amount),
+          payment_method: t.payment_method || "tarjeta",
+          restaurant_branch: t.restaurant_branch === "principal" ? "borrego" : t.restaurant_branch,
+          user_id: null,
+          transaction_type: "venta_shift4",
+        }));
+        combinedSales = [...combinedSales, ...mappedTrans];
+      }
+    }
+
+    combinedSales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setSales(combinedSales);
   };
 
   useEffect(() => {
@@ -204,7 +248,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
     const finalDesc = editIsCustomDesc ? editCustomDesc : editDesc;
     if (!finalDesc) return toast.error("Por favor ingresa una descripción.");
 
-    const { error } = await supabase
+    const { error } = await restaurantDb
       .from("sales_entries")
       .update({
         description: finalDesc,
@@ -230,11 +274,12 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
 
     // 2. Filter by transaction type
     if (filterType !== "all") {
+      const type = s.transaction_type || s.description;
       if (filterType === "otro") {
-        const stdTypesLower = ["cierre", "tips - propina", "efectivo recibo"];
-        if (s.description && stdTypesLower.includes(s.description.toLowerCase())) return false;
+        const stdTypesLower = ["cierre", "tips - propina", "efectivo recibo", "venta_shift4"];
+        if (type && stdTypesLower.includes(type.toLowerCase())) return false;
       } else {
-        if (!s.description || s.description.toLowerCase() !== filterType.toLowerCase()) return false;
+        if (!type || type.toLowerCase() !== filterType.toLowerCase()) return false;
       }
     }
 
@@ -462,6 +507,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
                       <SelectItem value="Cierre">Cierre</SelectItem>
                       <SelectItem value="Tips - propina">Tips - propina</SelectItem>
                       <SelectItem value="Efectivo recibo">Efectivo recibo</SelectItem>
+                      <SelectItem value="venta_shift4">Venta Shift4</SelectItem>
                       <SelectItem value="otro">Otros personalizados</SelectItem>
                     </SelectContent>
                   </Select>
@@ -484,7 +530,7 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
                         onClick={() => setFilterType("all")}
                         className="flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-1 text-[10px] font-bold cursor-pointer hover:bg-primary/20 transition-colors"
                       >
-                        {filterType === "otro" ? "Personalizado" : filterType}
+                        {filterType === "otro" ? "Personalizado" : (filterType === "venta_shift4" ? "Venta Shift4" : filterType)}
                         <X className="h-2.5 w-2.5" />
                       </button>
                     )}
@@ -527,7 +573,12 @@ export function VentasCommon({ branchTitle, branchKey }: { branchTitle: string; 
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1.5">
-                          {canManage ? (
+                          {s.transaction_type === "venta_shift4" ? (
+                            <span className="text-[10px] text-primary/70 bg-primary/5 border border-primary/20 rounded-full px-2.5 py-1 font-bold flex items-center justify-center gap-1.5 shadow-sm">
+                              <Lock className="h-3 w-3 text-primary/60 shrink-0" />
+                              <span>Shift4</span>
+                            </span>
+                          ) : canManage ? (
                             <>
                               <Button
                                 size="icon"

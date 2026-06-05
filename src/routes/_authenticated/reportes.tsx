@@ -72,11 +72,34 @@ function ReportesPage() {
       setLoading(true);
       const from = format(startOfYear(new Date(year, 0, 1)), "yyyy-MM-dd");
       const to = format(endOfYear(new Date(year, 0, 1)), "yyyy-MM-dd");
-      const [{ data: s }, { data: e }] = await Promise.all([
+      const [{ data: s }, { data: sTrans }, { data: e }] = await Promise.all([
         restaurantDb.from("sales_entries").select("date,amount,description,restaurant_branch,payment_method").gte("date", from).lte("date", to),
+        restaurantDb
+          .from("sales_transactions")
+          .select("transaction_date,amount,description,restaurant_branch,payment_method")
+          .eq("transaction_type", "venta_shift4")
+          .gte("transaction_date", from)
+          .lte("transaction_date", to),
         restaurantDb.from("expense_entries").select("date,amount,description,category").gte("date", from).lte("date", to),
       ]);
-      setSales((s || []) as Sale[]);
+
+      const mappedSalesEntries = (s || []).map((x: any) => ({
+        date: x.date,
+        amount: Number(x.amount),
+        description: x.description,
+        restaurant_branch: x.restaurant_branch,
+        payment_method: x.payment_method,
+      }));
+
+      const mappedShift4 = (sTrans || []).map((t: any) => ({
+        date: t.transaction_date,
+        amount: Number(t.amount),
+        description: t.description || "Venta Shift4",
+        restaurant_branch: t.restaurant_branch === "principal" ? "borrego" : t.restaurant_branch,
+        payment_method: t.payment_method || "tarjeta",
+      }));
+
+      setSales([...mappedSalesEntries, ...mappedShift4] as Sale[]);
       setExpenses((e || []) as Expense[]);
       setLoading(false);
     })();
@@ -293,7 +316,7 @@ function ReportesPage() {
     if (!activeMetrics) return;
 
     const doc = new jsPDF({ orientation: "portrait", format: "letter" });
-    const primaryBlue = [29, 78, 216]; // RGB for professional blue
+    const primaryBlue: [number, number, number] = [29, 78, 216]; // RGB for professional blue
 
     // Title Section
     doc.setFont("helvetica", "bold");

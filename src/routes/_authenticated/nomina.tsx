@@ -164,7 +164,7 @@ function Nomina() {
       setEmployees(empData as Employee[]);
 
       // 1. First check: Is there a record already linked to the logged-in user?
-      let linkedEmp = empData.find(e => e.linked_user_id === user.id);
+      let linkedEmp = empData.find((e: any) => e.linked_user_id === user.id);
       
       // 2. Second check: If not linked, but the user is an employee, try to auto-link by matching the full name
       if (!linkedEmp && isEmployee) {
@@ -177,7 +177,7 @@ function Nomina() {
         const normUser = normalize(userFullName);
         const normEmail = normalize(emailName);
         
-        linkedEmp = empData.find(e => {
+        linkedEmp = empData.find((e: any) => {
           const normEmp = normalize(e.name);
           // Match if exact match or if userFullName/email name matches/contains employee name
           if (normUser.length > 2 && (normEmp === normUser || normEmp.includes(normUser) || normUser.includes(normEmp))) {
@@ -195,7 +195,7 @@ function Nomina() {
             .from("employees")
             .update({ linked_user_id: user.id })
             .eq("id", linkedEmp.id)
-            .then(({ error }) => {
+            .then(({ error }: { error: any }) => {
               if (!error) {
                 toast.success(`Vinculación automática: Tu usuario ha sido enlazado a ${linkedEmp?.name}`);
               }
@@ -210,7 +210,7 @@ function Nomina() {
       } else if (!selectedEmployeeId && isEmployee) {
         // Fallback to user-isolated localStorage key
         const savedEmp = localStorage.getItem(`borrego_employee_id_${user.id}`);
-        if (savedEmp && empData.find(e => e.id === savedEmp)) {
+        if (savedEmp && empData.find((e: any) => e.id === savedEmp)) {
           setSelectedEmployeeId(savedEmp);
         }
       }
@@ -358,8 +358,8 @@ function Nomina() {
 
     if (logs && logs.length > 0) {
       const expenseIds = logs
-        .map((l) => l.expense_entry_id)
-        .filter((id): id is string => !!id);
+        .map((l: any) => l.expense_entry_id)
+        .filter((id: any): id is string => !!id);
       if (expenseIds.length > 0) {
         await restaurantDb.from("expense_entries").delete().in("id", expenseIds);
       }

@@ -1,1 +1,5 @@
 project_id = "tbztytxaspltulphnwqh"
+
+[functions]
+[functions.shift4-webhook]
+verify_jwt = false
