@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { restaurantDb } from "@/integrations/supabase/restaurant-client";
 import { useAuth } from "@/hooks/use-auth";
@@ -10,6 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { generateWeeksForYears } from "@/hooks/use-view-filter";
+import { FileBarChart } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { format, startOfWeek, endOfWeek } from "date-fns";
+import { es } from "date-fns/locale";
 import { 
   Users, 
   Plus, 
@@ -35,6 +40,21 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
+
+const MONTHS_FULL = [
+  { value: "0", label: "Enero" },
+  { value: "1", label: "Febrero" },
+  { value: "2", label: "Marzo" },
+  { value: "3", label: "Abril" },
+  { value: "4", label: "Mayo" },
+  { value: "5", label: "Junio" },
+  { value: "6", label: "Julio" },
+  { value: "7", label: "Agosto" },
+  { value: "8", label: "Septiembre" },
+  { value: "9", label: "Octubre" },
+  { value: "10", label: "Noviembre" },
+  { value: "11", label: "Diciembre" }
+];
 
 export const Route = createFileRoute("/_authenticated/nomina")({
   component: Nomina,
@@ -97,6 +117,40 @@ function Nomina() {
   const [activeTab, setActiveTab] = useState<"employees" | "payroll" | "time_tracking">(
     isEmployee ? "time_tracking" : "employees"
   );
+  
+  // Filters State
+  const [filterType, setFilterType] = useState<"semana" | "mes">("semana");
+  const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth()));
+  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
+  const [weekKey, setWeekKey] = useState<string>("");
+
+  const [activeFilterType, setActiveFilterType] = useState<"semana" | "mes">("semana");
+  const [activeMonth, setActiveMonth] = useState<string>(String(new Date().getMonth()));
+  const [activeYear, setActiveYear] = useState<string>(String(new Date().getFullYear()));
+  const [activeWeekKey, setActiveWeekKey] = useState<string>("");
+
+  const weeks = useMemo(() => {
+    const today = new Date();
+    const years = [today.getFullYear() - 1, today.getFullYear(), today.getFullYear() + 1];
+    return generateWeeksForYears(years);
+  }, []);
+
+  useEffect(() => {
+    if (weeks.length > 0 && !weekKey) {
+      const today = new Date();
+      const currentWeek = weeks.find(w => today >= w.from && today <= w.to) || weeks[0];
+      setWeekKey(currentWeek.key);
+      setActiveWeekKey(currentWeek.key);
+    }
+  }, [weeks]);
+
+  const handleQuery = () => {
+    setActiveFilterType(filterType);
+    setActiveMonth(selectedMonth);
+    setActiveYear(selectedYear);
+    setActiveWeekKey(weekKey);
+    toast.success("Filtro aplicado con éxito");
+  };
   
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>([]);
@@ -517,6 +571,8 @@ function Nomina() {
       .update({ is_paid: true })
       .eq("employee_id", empId)
       .eq("is_paid", false)
+      .gte("date", activePeriodRange.fromStr)
+      .lte("date", activePeriodRange.toStr)
       .not("clock_out", "is", null);
 
     if (updateError) {
@@ -708,21 +764,92 @@ function Nomina() {
   };
 
   // Calculations
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-  const currentMonthPaid = payrollRecords
-    .filter((r) => {
-      const recordDate = new Date(r.date);
-      return recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear;
-    })
-    .reduce((sum, r) => sum + r.total_amount, 0);
+  const activePeriodRange = useMemo(() => {
+    let fromStr = "";
+    let toStr = "";
+    let label = "";
 
-  const currentMonthHours = payrollRecords
-    .filter((r) => {
-      const recordDate = new Date(r.date);
-      return recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear;
-    })
-    .reduce((sum, r) => sum + r.hours_worked, 0);
+    if (activeFilterType === "semana") {
+      const week = weeks.find(w => w.key === activeWeekKey);
+      if (week) {
+        fromStr = format(week.from, "yyyy-MM-dd");
+        toStr = format(week.to, "yyyy-MM-dd");
+        label = week.label;
+      } else {
+        const today = new Date();
+        const fromDate = startOfWeek(today, { weekStartsOn: 3 });
+        const toDate = endOfWeek(today, { weekStartsOn: 3 });
+        fromStr = format(fromDate, "yyyy-MM-dd");
+        toStr = format(toDate, "yyyy-MM-dd");
+        label = `${format(fromDate, "dd MMM", { locale: es })} – ${format(toDate, "dd MMM yyyy", { locale: es })}`;
+      }
+    } else {
+      const yearNum = Number(activeYear);
+      const monthNum = Number(activeMonth);
+      const lastDay = new Date(yearNum, monthNum + 1, 0).getDate();
+      fromStr = `${yearNum}-${String(monthNum + 1).padStart(2, "0")}-01`;
+      toStr = `${yearNum}-${String(monthNum + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      
+      const monthLabel = MONTHS_FULL.find((m) => m.value === activeMonth)?.label || "";
+      label = `${monthLabel} ${yearNum}`;
+    }
+
+    return { fromStr, toStr, label };
+  }, [activeFilterType, activeWeekKey, activeMonth, activeYear, weeks]);
+
+  // Group employee statistics for Admin view based on the active period range
+  const employeeStats = useMemo(() => {
+    return employees.map(emp => {
+      // Filter time entries that fall within the active range
+      const empEntries = timeEntries.filter(e => {
+        if (e.employee_id !== emp.id) return false;
+        if (e.is_paid) return false;
+        if (!e.clock_out) return false;
+        if (!e.hours_worked) return false;
+        return e.date >= activePeriodRange.fromStr && e.date <= activePeriodRange.toStr;
+      });
+      
+      const unpaidHours = empEntries.reduce((sum, e) => sum + (e.hours_worked || 0), 0);
+      const unpaidTotal = unpaidHours * emp.hourly_rate;
+      const isWorkingNow = timeEntries.some(e => e.employee_id === emp.id && !e.clock_out);
+      return { ...emp, unpaidHours, unpaidTotal, isWorkingNow };
+    });
+  }, [employees, timeEntries, activePeriodRange]);
+
+  // KPI stats calculations based on activePeriodRange
+  const kpiStats = useMemo(() => {
+    if (activeFilterType === "semana") {
+      // Accumulated unpaid for the active week
+      const totalUnpaidAmount = employeeStats.reduce((sum, emp) => sum + emp.unpaidTotal, 0);
+      const totalUnpaidHours = employeeStats.reduce((sum, emp) => sum + emp.unpaidHours, 0);
+      return {
+        card2Title: "Monto Acumulado (Semana)",
+        card2Value: `$${totalUnpaidAmount.toFixed(2)}`,
+        card2Subtitle: `Acumulado no liquidado · ${activePeriodRange.label}`,
+        card3Title: "Horas Trabajadas (Semana)",
+        card3Value: `${totalUnpaidHours.toFixed(1)} hrs`,
+        card3Subtitle: `Horas por liquidar · ${activePeriodRange.label}`,
+      };
+    } else {
+      // Paid in the active month (from payrollRecords)
+      const monthPaid = payrollRecords
+        .filter((r) => r.date >= activePeriodRange.fromStr && r.date <= activePeriodRange.toStr)
+        .reduce((sum, r) => sum + r.total_amount, 0);
+
+      const monthHours = payrollRecords
+        .filter((r) => r.date >= activePeriodRange.fromStr && r.date <= activePeriodRange.toStr)
+        .reduce((sum, r) => sum + r.hours_worked, 0);
+
+      return {
+        card2Title: "Nómina del Mes",
+        card2Value: `$${monthPaid.toFixed(2)}`,
+        card2Subtitle: `Total pagado · ${activePeriodRange.label}`,
+        card3Title: "Horas Trabajadas (Mes)",
+        card3Value: `${monthHours.toFixed(1)} hrs`,
+        card3Subtitle: `Horas pagadas · ${activePeriodRange.label}`,
+      };
+    }
+  }, [activeFilterType, employeeStats, payrollRecords, activePeriodRange]);
 
   const selectedEmployeeData = employees.find(e => e.id === selectedEmployeeId);
   const myTimeEntries = timeEntries.filter(e => e.employee_id === selectedEmployeeId);
@@ -732,14 +859,19 @@ function Nomina() {
   const myAccumulatedHours = myUnpaidEntries.reduce((sum, e) => sum + (e.hours_worked || 0), 0);
   const myAccumulatedTotal = myAccumulatedHours * (selectedEmployeeData?.hourly_rate || 0);
 
-  // Group employee statistics for Admin view
-  const employeeStats = employees.map(emp => {
-    const empEntries = timeEntries.filter(e => e.employee_id === emp.id && !e.is_paid && e.clock_out && e.hours_worked);
-    const unpaidHours = empEntries.reduce((sum, e) => sum + (e.hours_worked || 0), 0);
-    const unpaidTotal = unpaidHours * emp.hourly_rate;
-    const isWorkingNow = timeEntries.some(e => e.employee_id === emp.id && !e.clock_out);
-    return { ...emp, unpaidHours, unpaidTotal, isWorkingNow };
-  });
+  // Filter time entries history for the admin history view to match the active period range
+  const filteredTimeEntries = useMemo(() => {
+    return timeEntries.filter(
+      (entry) => entry.date >= activePeriodRange.fromStr && entry.date <= activePeriodRange.toStr
+    );
+  }, [timeEntries, activePeriodRange]);
+
+  // Filter payroll records shown in the history table based on the active period range
+  const filteredPayrollRecords = useMemo(() => {
+    return payrollRecords.filter(
+      (record) => record.date >= activePeriodRange.fromStr && record.date <= activePeriodRange.toStr
+    );
+  }, [payrollRecords, activePeriodRange]);
 
   // Calculate elapsed time for active entry
   const [elapsedActiveHours, setElapsedActiveHours] = useState(0);
@@ -960,6 +1092,94 @@ function Nomina() {
         </div>
       </div>
 
+      {/* Filters Segmented Control */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-accent/20 p-4 rounded-2xl border border-border/40">
+        <div className="flex p-1 bg-accent/40 rounded-xl border border-border/40 gap-1 self-start sm:self-auto shrink-0 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => {
+              setFilterType("semana");
+            }}
+            className={cn(
+              "flex-1 sm:flex-initial py-2 px-4 text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5",
+              filterType === "semana"
+                ? "bg-background text-foreground shadow-sm border border-border/50"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
+            )}
+          >
+            <Calendar className="h-3.5 w-3.5 text-primary" /> Ver por Semana
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setFilterType("mes");
+            }}
+            className={cn(
+              "flex-1 sm:flex-initial py-2 px-4 text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5",
+              filterType === "mes"
+                ? "bg-background text-foreground shadow-sm border border-border/50"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
+            )}
+          >
+            <FileBarChart className="h-3.5 w-3.5 text-primary" /> Ver por Mes
+          </button>
+        </div>
+
+        {filterType === "semana" && (
+          <div className="flex flex-1 sm:flex-none flex-col sm:flex-row gap-3 items-stretch sm:items-end w-full sm:w-auto">
+            <div className="flex-1 sm:w-[240px] space-y-1.5 min-w-0">
+              <label className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">
+                Seleccionar Semana
+              </label>
+              <select
+                value={weekKey}
+                onChange={(e) => setWeekKey(e.target.value)}
+                className="flex h-11 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold focus:outline-none"
+              >
+                {weeks.map((w) => (
+                  <option key={w.key} value={w.key}>
+                    {w.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button
+              onClick={handleQuery}
+              className="h-11 px-5 rounded-xl text-xs font-bold bg-primary hover:bg-primary/95 text-white flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all hover:scale-[1.02] shrink-0"
+            >
+              Consulta
+            </Button>
+          </div>
+        )}
+
+        {filterType === "mes" && (
+          <div className="flex flex-1 sm:flex-none flex-col sm:flex-row gap-3 items-stretch sm:items-end w-full sm:w-auto">
+            <div className="flex-1 sm:w-[160px] space-y-1.5 min-w-0">
+              <label className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">
+                Seleccionar Mes
+              </label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="flex h-11 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold focus:outline-none"
+              >
+                {MONTHS_FULL.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button
+              onClick={handleQuery}
+              className="h-11 px-5 rounded-xl text-xs font-bold bg-primary hover:bg-primary/95 text-white flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all hover:scale-[1.02] shrink-0"
+            >
+              Consulta
+            </Button>
+          </div>
+        )}
+      </div>
+
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="bg-card/50 backdrop-blur-md border border-border/80 shadow-md">
@@ -980,16 +1200,16 @@ function Nomina() {
         <Card className="bg-card/50 backdrop-blur-md border border-border/80 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              Nómina del Mes
+              {kpiStats.card2Title}
             </CardTitle>
             <DollarSign className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-              ${currentMonthPaid.toFixed(2)}
+              {kpiStats.card2Value}
             </div>
             <p className="text-[10px] text-muted-foreground mt-1">
-              Total pagado este mes corriente
+              {kpiStats.card2Subtitle}
             </p>
           </CardContent>
         </Card>
@@ -997,14 +1217,14 @@ function Nomina() {
         <Card className="bg-card/50 backdrop-blur-md border border-border/80 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              Horas Trabajadas (Mes)
+              {kpiStats.card3Title}
             </CardTitle>
             <Clock className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{currentMonthHours.toFixed(1)} hrs</div>
+            <div className="text-2xl font-bold">{kpiStats.card3Value}</div>
             <p className="text-[10px] text-muted-foreground mt-1">
-              Horas pagadas este mes
+              {kpiStats.card3Subtitle}
             </p>
           </CardContent>
         </Card>
@@ -1139,7 +1359,7 @@ function Nomina() {
                      </TableRow>
                    </TableHeader>
                    <TableBody>
-                      {timeEntries.slice(0, 20).map((entry) => (
+                      {filteredTimeEntries.slice(0, 20).map((entry) => (
                         <TableRow key={entry.id}>
                           <TableCell className="text-xs font-medium whitespace-nowrap">
                             {new Date(entry.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
@@ -1204,6 +1424,11 @@ function Nomina() {
                           )}
                         </TableRow>
                       ))}
+                      {filteredTimeEntries.length === 0 && (
+                         <TableRow>
+                          <TableCell colSpan={6} className="text-center py-6 text-xs text-muted-foreground italic">No hay registros en el período seleccionado.</TableCell>
+                         </TableRow>
+                      )}
                    </TableBody>
                  </Table>
                </div>
@@ -1489,7 +1714,7 @@ function Nomina() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {payrollRecords.map((record) => {
+                      {filteredPayrollRecords.map((record) => {
                         const isOwner = record.user_id === user?.id;
                         const canEdit = isAdmin || (isManager && isOwner);
 
@@ -1560,6 +1785,13 @@ function Nomina() {
                           </TableRow>
                         );
                       })}
+                      {filteredPayrollRecords.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-xs py-6 text-muted-foreground italic">
+                            No hay registros de pago en el período seleccionado.
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </div>
