@@ -105,6 +105,7 @@ function Nomina() {
   // Employee App State
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [activeEntry, setActiveEntry] = useState<TimeEntry | null>(null);
+  const [clockSubmitting, setClockSubmitting] = useState(false);
 
   // State for Add Employee
   const [empName, setEmpName] = useState("");
@@ -376,6 +377,9 @@ function Nomina() {
   // Clock In / Clock Out
   const handleToggleClock = async () => {
     if (!user || !selectedEmployeeId) return toast.error("Selecciona tu nombre primero.");
+    if (clockSubmitting) return;
+    setClockSubmitting(true);
+    try {
 
     if (activeEntry) {
       // Clock Out
@@ -397,7 +401,20 @@ function Nomina() {
       if (error) return toast.error(error.message);
       toast.success("Salida registrada con éxito.");
     } else {
-      // Clock In
+      // Clock In — prevent duplicate entry for the same employee on the same day
+      const today = new Date().toISOString().split("T")[0];
+      const { data: existing } = await restaurantDb
+        .from("time_entries")
+        .select("id")
+        .eq("employee_id", selectedEmployeeId)
+        .eq("date", today)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        toast.error("Ya existe un registro de entrada para hoy. No se puede duplicar.");
+        return;
+      }
+
       const { error } = await restaurantDb
         .from("time_entries")
         .insert({
@@ -411,6 +428,9 @@ function Nomina() {
     }
 
     loadData();
+    } finally {
+      setClockSubmitting(false);
+    }
   };
 
   const handleSelectEmployee = async (id: string) => {
