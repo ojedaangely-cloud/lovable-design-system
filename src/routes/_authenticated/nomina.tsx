@@ -647,6 +647,66 @@ function Nomina() {
     loadData();
   };
 
+  // === Admin actions on time entries ===
+  const handleCloseShift = async (entry: TimeEntry) => {
+    if (!isAdmin) return toast.error("Solo el administrador puede cerrar turnos.");
+    const confirm = window.confirm(`¿Cerrar turno de ${entry.employees?.name || "empleado"} ahora?`);
+    if (!confirm) return;
+    const clockOut = new Date().toISOString();
+    const hours = (new Date(clockOut).getTime() - new Date(entry.clock_in).getTime()) / (1000 * 60 * 60);
+    const { error } = await restaurantDb
+      .from("time_entries")
+      .update({ clock_out: clockOut, hours_worked: hours })
+      .eq("id", entry.id);
+    if (error) return toast.error(error.message);
+    toast.success("Turno cerrado correctamente.");
+    loadData();
+  };
+
+  const handleDeleteTimeEntry = async (entry: TimeEntry) => {
+    if (!isAdmin) return toast.error("Solo el administrador puede eliminar registros de horas.");
+    if (entry.is_paid) return toast.error("No se puede eliminar un registro ya pagado.");
+    const confirm = window.confirm(`¿Eliminar registro de ${entry.employees?.name || "empleado"} del ${entry.date}?`);
+    if (!confirm) return;
+    const { error } = await restaurantDb.from("time_entries").delete().eq("id", entry.id);
+    if (error) return toast.error(error.message);
+    toast.success("Registro eliminado.");
+    loadData();
+  };
+
+  const handleUpdateTimeEntry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin || !editingTimeEntry) return;
+    if (editingTimeEntry.is_paid) return toast.error("No se puede editar un registro ya pagado.");
+    if (!editClockIn) return toast.error("La entrada es obligatoria.");
+
+    const clockInIso = new Date(editClockIn).toISOString();
+    let clockOutIso: string | null = null;
+    let hours: number | null = null;
+    if (editClockOut) {
+      clockOutIso = new Date(editClockOut).toISOString();
+      if (new Date(clockOutIso).getTime() <= new Date(clockInIso).getTime()) {
+        return toast.error("La salida debe ser posterior a la entrada.");
+      }
+      hours = (new Date(clockOutIso).getTime() - new Date(clockInIso).getTime()) / (1000 * 60 * 60);
+    }
+
+    const newDate = clockInIso.split("T")[0];
+    const { error } = await restaurantDb
+      .from("time_entries")
+      .update({
+        clock_in: clockInIso,
+        clock_out: clockOutIso,
+        hours_worked: hours,
+        date: newDate,
+      })
+      .eq("id", editingTimeEntry.id);
+    if (error) return toast.error(error.message);
+    toast.success("Registro de horas actualizado.");
+    setEditingTimeEntry(null);
+    loadData();
+  };
+
   // Calculations
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
