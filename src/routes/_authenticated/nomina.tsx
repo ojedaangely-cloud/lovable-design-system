@@ -132,6 +132,19 @@ function Nomina() {
   const [editPayRate, setEditPayRate] = useState("");
   const [editPayNotes, setEditPayNotes] = useState("");
 
+  // Editing a time entry (Admin only)
+  const [editingTimeEntry, setEditingTimeEntry] = useState<TimeEntry | null>(null);
+  const [editClockIn, setEditClockIn] = useState("");
+  const [editClockOut, setEditClockOut] = useState("");
+
+  // Helper: format ISO -> datetime-local string in local tz
+  const toLocalInput = (iso: string | null) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
   // Helper to get last Wednesday
   const getLastWednesday = () => {
     const d = new Date();
