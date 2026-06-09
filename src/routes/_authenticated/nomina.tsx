@@ -1700,6 +1700,57 @@ function Nomina() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* EDIT TIME ENTRY DIALOG (Admin only) */}
+      <Dialog open={!!editingTimeEntry} onOpenChange={(open) => !open && setEditingTimeEntry(null)}>
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl bg-card border border-border/80 p-0 overflow-hidden max-h-[90vh] flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border/40 shrink-0">
+            <DialogTitle>Ajustar Horas — {editingTimeEntry?.employees?.name}</DialogTitle>
+            <DialogDescription>Modifica la entrada y salida. Las horas se recalculan automáticamente.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateTimeEntry} className="space-y-4 px-6 py-4 min-w-0 overflow-y-auto flex-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="editClockIn">Entrada</Label>
+              <Input
+                id="editClockIn"
+                type="datetime-local"
+                required
+                value={editClockIn}
+                className="w-full rounded-xl"
+                onChange={(e) => setEditClockIn(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="editClockOut">Salida (dejar vacío para mantener turno abierto)</Label>
+              <Input
+                id="editClockOut"
+                type="datetime-local"
+                value={editClockOut}
+                className="w-full rounded-xl"
+                onChange={(e) => setEditClockOut(e.target.value)}
+              />
+            </div>
+            {editClockIn && editClockOut && (
+              <div className="p-3 bg-muted/60 rounded-xl flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-bold">Horas calculadas:</span>
+                <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
+                  {(
+                    Math.max(0, (new Date(editClockOut).getTime() - new Date(editClockIn).getTime()) / (1000 * 60 * 60))
+                  ).toFixed(2)} hrs
+                </span>
+              </div>
+            )}
+            <DialogFooter className="gap-2 sm:gap-0 pt-4 w-full shrink-0">
+              <Button type="button" variant="outline" className="rounded-xl flex-1 sm:flex-initial" onClick={() => setEditingTimeEntry(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="bg-primary hover:bg-primary/95 text-white font-bold rounded-xl shadow-md flex-1 sm:flex-initial">
+                Guardar Cambios
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
