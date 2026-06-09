@@ -105,6 +105,7 @@ function Nomina() {
   // Employee App State
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [activeEntry, setActiveEntry] = useState<TimeEntry | null>(null);
+  const [clockSubmitting, setClockSubmitting] = useState(false);
 
   // State for Add Employee
   const [empName, setEmpName] = useState("");
@@ -130,6 +131,19 @@ function Nomina() {
   const [editPayHours, setEditPayHours] = useState("");
   const [editPayRate, setEditPayRate] = useState("");
   const [editPayNotes, setEditPayNotes] = useState("");
+
+  // Editing a time entry (Admin only)
+  const [editingTimeEntry, setEditingTimeEntry] = useState<TimeEntry | null>(null);
+  const [editClockIn, setEditClockIn] = useState("");
+  const [editClockOut, setEditClockOut] = useState("");
+
+  // Helper: format ISO -> datetime-local string in local tz
+  const toLocalInput = (iso: string | null) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
 
   // Helper to get last Wednesday
   const getLastWednesday = () => {
@@ -376,6 +390,9 @@ function Nomina() {
   // Clock In / Clock Out
   const handleToggleClock = async () => {
     if (!user || !selectedEmployeeId) return toast.error("Selecciona tu nombre primero.");
+    if (clockSubmitting) return;
+    setClockSubmitting(true);
+    try {
 
     if (activeEntry) {
       // Clock Out
@@ -397,7 +414,20 @@ function Nomina() {
       if (error) return toast.error(error.message);
       toast.success("Salida registrada con éxito.");
     } else {
-      // Clock In
+      // Clock In — prevent duplicate entry for the same employee on the same day
+      const today = new Date().toISOString().split("T")[0];
+      const { data: existing } = await restaurantDb
+        .from("time_entries")
+        .select("id")
+        .eq("employee_id", selectedEmployeeId)
+        .eq("date", today)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        toast.error("Ya existe un registro de entrada para hoy. No se puede duplicar.");
+        return;
+      }
+
       const { error } = await restaurantDb
         .from("time_entries")
         .insert({
@@ -411,6 +441,9 @@ function Nomina() {
     }
 
     loadData();
+    } finally {
+      setClockSubmitting(false);
+    }
   };
 
   const handleSelectEmployee = async (id: string) => {
@@ -614,6 +647,66 @@ function Nomina() {
     loadData();
   };
 
+  // === Admin actions on time entries ===
+  const handleCloseShift = async (entry: TimeEntry) => {
+    if (!isAdmin) return toast.error("Solo el administrador puede cerrar turnos.");
+    const confirm = window.confirm(`¿Cerrar turno de ${entry.employees?.name || "empleado"} ahora?`);
+    if (!confirm) return;
+    const clockOut = new Date().toISOString();
+    const hours = (new Date(clockOut).getTime() - new Date(entry.clock_in).getTime()) / (1000 * 60 * 60);
+    const { error } = await restaurantDb
+      .from("time_entries")
+      .update({ clock_out: clockOut, hours_worked: hours })
+      .eq("id", entry.id);
+    if (error) return toast.error(error.message);
+    toast.success("Turno cerrado correctamente.");
+    loadData();
+  };
+
+  const handleDeleteTimeEntry = async (entry: TimeEntry) => {
+    if (!isAdmin) return toast.error("Solo el administrador puede eliminar registros de horas.");
+    if (entry.is_paid) return toast.error("No se puede eliminar un registro ya pagado.");
+    const confirm = window.confirm(`¿Eliminar registro de ${entry.employees?.name || "empleado"} del ${entry.date}?`);
+    if (!confirm) return;
+    const { error } = await restaurantDb.from("time_entries").delete().eq("id", entry.id);
+    if (error) return toast.error(error.message);
+    toast.success("Registro eliminado.");
+    loadData();
+  };
+
+  const handleUpdateTimeEntry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin || !editingTimeEntry) return;
+    if (editingTimeEntry.is_paid) return toast.error("No se puede editar un registro ya pagado.");
+    if (!editClockIn) return toast.error("La entrada es obligatoria.");
+
+    const clockInIso = new Date(editClockIn).toISOString();
+    let clockOutIso: string | null = null;
+    let hours: number | null = null;
+    if (editClockOut) {
+      clockOutIso = new Date(editClockOut).toISOString();
+      if (new Date(clockOutIso).getTime() <= new Date(clockInIso).getTime()) {
+        return toast.error("La salida debe ser posterior a la entrada.");
+      }
+      hours = (new Date(clockOutIso).getTime() - new Date(clockInIso).getTime()) / (1000 * 60 * 60);
+    }
+
+    const newDate = clockInIso.split("T")[0];
+    const { error } = await restaurantDb
+      .from("time_entries")
+      .update({
+        clock_in: clockInIso,
+        clock_out: clockOutIso,
+        hours_worked: hours,
+        date: newDate,
+      })
+      .eq("id", editingTimeEntry.id);
+    if (error) return toast.error(error.message);
+    toast.success("Registro de horas actualizado.");
+    setEditingTimeEntry(null);
+    loadData();
+  };
+
   // Calculations
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
@@ -746,6 +839,7 @@ function Nomina() {
 
                   <Button 
                     onClick={handleToggleClock}
+                    disabled={clockSubmitting}
                     className={`w-full h-16 text-lg font-bold rounded-2xl shadow-lg transition-all duration-300 ${
                       activeEntry 
                         ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" 
@@ -1041,6 +1135,7 @@ function Nomina() {
                        <TableHead className="text-xs">Horario</TableHead>
                        <TableHead className="text-xs text-center">Horas</TableHead>
                        <TableHead className="text-xs text-right">Estado Pago</TableHead>
+                       {isAdmin && <TableHead className="text-xs text-right">Acciones</TableHead>}
                      </TableRow>
                    </TableHeader>
                    <TableBody>
@@ -1069,6 +1164,44 @@ function Nomina() {
                               <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-600 border-none animate-pulse">Activo</Badge>
                             )}
                           </TableCell>
+                          {isAdmin && (
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                {!entry.clock_out && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-[10px] font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                                    onClick={() => handleCloseShift(entry)}
+                                  >
+                                    <Square className="h-3 w-3 mr-1" fill="currentColor" /> Cerrar
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                  disabled={entry.is_paid}
+                                  onClick={() => {
+                                    setEditingTimeEntry(entry);
+                                    setEditClockIn(toLocalInput(entry.clock_in));
+                                    setEditClockOut(toLocalInput(entry.clock_out));
+                                  }}
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                  disabled={entry.is_paid}
+                                  onClick={() => handleDeleteTimeEntry(entry)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                    </TableBody>
@@ -1561,6 +1694,57 @@ function Nomina() {
                 Cancelar
               </Button>
               <Button type="submit" className="bg-emerald-600 hover:bg-emerald-600/95 text-white font-bold rounded-xl shadow-md flex-1 sm:flex-initial">
+                Guardar Cambios
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* EDIT TIME ENTRY DIALOG (Admin only) */}
+      <Dialog open={!!editingTimeEntry} onOpenChange={(open) => !open && setEditingTimeEntry(null)}>
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl bg-card border border-border/80 p-0 overflow-hidden max-h-[90vh] flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border/40 shrink-0">
+            <DialogTitle>Ajustar Horas — {editingTimeEntry?.employees?.name}</DialogTitle>
+            <DialogDescription>Modifica la entrada y salida. Las horas se recalculan automáticamente.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateTimeEntry} className="space-y-4 px-6 py-4 min-w-0 overflow-y-auto flex-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="editClockIn">Entrada</Label>
+              <Input
+                id="editClockIn"
+                type="datetime-local"
+                required
+                value={editClockIn}
+                className="w-full rounded-xl"
+                onChange={(e) => setEditClockIn(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="editClockOut">Salida (dejar vacío para mantener turno abierto)</Label>
+              <Input
+                id="editClockOut"
+                type="datetime-local"
+                value={editClockOut}
+                className="w-full rounded-xl"
+                onChange={(e) => setEditClockOut(e.target.value)}
+              />
+            </div>
+            {editClockIn && editClockOut && (
+              <div className="p-3 bg-muted/60 rounded-xl flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-bold">Horas calculadas:</span>
+                <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
+                  {(
+                    Math.max(0, (new Date(editClockOut).getTime() - new Date(editClockIn).getTime()) / (1000 * 60 * 60))
+                  ).toFixed(2)} hrs
+                </span>
+              </div>
+            )}
+            <DialogFooter className="gap-2 sm:gap-0 pt-4 w-full shrink-0">
+              <Button type="button" variant="outline" className="rounded-xl flex-1 sm:flex-initial" onClick={() => setEditingTimeEntry(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="bg-primary hover:bg-primary/95 text-white font-bold rounded-xl shadow-md flex-1 sm:flex-initial">
                 Guardar Cambios
               </Button>
             </DialogFooter>
