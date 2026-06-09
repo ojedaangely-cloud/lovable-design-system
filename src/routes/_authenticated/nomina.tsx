@@ -766,6 +766,7 @@ function Nomina() {
 
                   <Button 
                     onClick={handleToggleClock}
+                    disabled={clockSubmitting}
                     className={`w-full h-16 text-lg font-bold rounded-2xl shadow-lg transition-all duration-300 ${
                       activeEntry 
                         ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" 
