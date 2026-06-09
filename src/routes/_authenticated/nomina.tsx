@@ -1135,6 +1135,7 @@ function Nomina() {
                        <TableHead className="text-xs">Horario</TableHead>
                        <TableHead className="text-xs text-center">Horas</TableHead>
                        <TableHead className="text-xs text-right">Estado Pago</TableHead>
+                       {isAdmin && <TableHead className="text-xs text-right">Acciones</TableHead>}
                      </TableRow>
                    </TableHeader>
                    <TableBody>
@@ -1163,6 +1164,44 @@ function Nomina() {
                               <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-600 border-none animate-pulse">Activo</Badge>
                             )}
                           </TableCell>
+                          {isAdmin && (
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                {!entry.clock_out && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-[10px] font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                                    onClick={() => handleCloseShift(entry)}
+                                  >
+                                    <Square className="h-3 w-3 mr-1" fill="currentColor" /> Cerrar
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                  disabled={entry.is_paid}
+                                  onClick={() => {
+                                    setEditingTimeEntry(entry);
+                                    setEditClockIn(toLocalInput(entry.clock_in));
+                                    setEditClockOut(toLocalInput(entry.clock_out));
+                                  }}
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                  disabled={entry.is_paid}
+                                  onClick={() => handleDeleteTimeEntry(entry)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                    </TableBody>
